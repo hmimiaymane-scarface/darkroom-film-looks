@@ -1,0 +1,1021 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Darkroom</title>
+<style>
+:root{
+  --bg:#0e0e10; --panel:#16161a; --panel2:#1e1e23; --line:#2a2a30; --line2:#3a3a42;
+  --text:#ececef; --dim:#9b9ba5; --faint:#6b6b74; --accent:#f0a64a; --accent2:#ffcf8a; --danger:#ff7a6b;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
+  font:13px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,sans-serif;overflow:hidden;
+  -webkit-user-select:none;user-select:none}
+button,select{font:inherit;color:var(--text);background:var(--panel2);border:1px solid var(--line);
+  border-radius:8px;padding:7px 12px;cursor:pointer}
+button:hover:not(:disabled),select:hover{border-color:var(--line2)}
+button.primary{background:var(--accent);color:#1a1206;border-color:var(--accent);font-weight:600}
+button.primary:hover:not(:disabled){background:var(--accent2)}
+button.ghost{background:transparent;border-color:transparent;color:var(--dim)}
+button.ghost:hover:not(:disabled){color:var(--text);background:var(--panel2)}
+button:disabled{opacity:.35;cursor:default}
+:focus{outline:none}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+kbd{font:11px ui-monospace,Menlo,monospace;background:var(--panel2);border:1px solid var(--line2);border-bottom-width:2px;
+  border-radius:4px;padding:0 5px;color:var(--text)}
+
+header{height:52px;display:flex;align-items:center;gap:8px;padding:0 14px;border-bottom:1px solid var(--line);background:var(--panel)}
+.logo{font-weight:700;letter-spacing:.16em;font-size:12px;margin-right:10px}
+.logo span{color:var(--accent)}
+.spacer{flex:1}
+.seg{display:flex;align-items:center;gap:2px}
+.toggle{display:flex;align-items:center;gap:6px;color:var(--dim);cursor:pointer;padding:6px 10px;border-radius:8px}
+.toggle:hover{color:var(--text)}
+.toggle input{accent-color:var(--accent);margin:0}
+
+main{display:grid;grid-template-columns:136px 1fr 320px;height:calc(100% - 52px)}
+
+/* filmstrip */
+#strip{border-right:1px solid var(--line);overflow-y:auto;padding:10px 8px;background:var(--panel)}
+#strip:empty::after{content:"No photos yet";color:var(--faint);font-size:11px;display:block;text-align:center;margin-top:20px}
+.item{position:relative;margin-bottom:8px;cursor:pointer;border-radius:8px;padding:4px;border:2px solid transparent;width:100%;
+  background:none;text-align:left;display:block}
+.item:hover{background:var(--panel2)}
+.item.active{border-color:var(--accent);background:var(--panel2)}
+.item canvas{width:100%;display:block;border-radius:4px;background:#25252a;aspect-ratio:3/2;object-fit:cover}
+.item .nm{font-size:10px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:4px}
+.item .lk{font-size:10px;color:var(--accent);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.item .rm{position:absolute;top:7px;right:7px;width:20px;height:20px;padding:0;border-radius:50%;font-size:13px;line-height:1;
+  background:rgba(0,0,0,.7);border:none;color:#fff;opacity:0;transition:opacity .15s}
+.item:hover .rm,.item:focus-within .rm{opacity:1}
+.item .rm:hover{background:var(--danger)}
+
+/* viewer */
+#viewer{position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#09090a}
+#stage{position:relative;display:none;box-shadow:0 12px 48px rgba(0,0,0,.6);touch-action:none}
+#stage canvas{display:block;width:100%;height:100%}
+#divider{position:absolute;top:0;bottom:0;width:2px;margin-left:-1px;background:#fff;display:none;pointer-events:none;box-shadow:0 0 6px rgba(0,0,0,.6)}
+#divider::after{content:"⇆";position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:28px;height:28px;border-radius:50%;
+  background:#fff;color:#111;display:flex;align-items:center;justify-content:center;font-size:14px;box-shadow:0 2px 8px rgba(0,0,0,.5)}
+.tag{position:absolute;top:10px;padding:3px 8px;border-radius:4px;background:rgba(0,0,0,.6);font-size:11px;display:none;pointer-events:none}
+.tag.l{left:10px}.tag.r{right:10px}
+#stage.split #divider,#stage.split .tag{display:block}
+#stage.split{cursor:ew-resize}
+#stage.hold .tag.l{display:block}
+#info{position:absolute;left:0;right:0;bottom:0;padding:8px 14px;font-size:11px;color:var(--faint);display:flex;gap:14px;justify-content:center;pointer-events:none}
+#empty{text-align:center;color:var(--dim);border:2px dashed var(--line2);border-radius:18px;padding:56px 64px;max-width:540px;transition:border-color .15s,background .15s}
+#empty h2{color:var(--text);margin:0 0 8px;font-size:20px;font-weight:600}
+#empty .tip{margin-top:22px;font-size:12px;color:var(--faint)}
+#empty button{margin-top:18px}
+#viewer.drag #empty{border-color:var(--accent);background:rgba(240,166,74,.05)}
+#viewer.drag::after{content:"Drop to add photos or LUTs";position:absolute;inset:12px;border:2px dashed var(--accent);border-radius:14px;
+  display:flex;align-items:center;justify-content:center;font-size:16px;background:rgba(9,9,10,.75)}
+#busy{position:absolute;top:14px;left:50%;transform:translateX(-50%);display:none;align-items:center;gap:10px;
+  background:rgba(22,22,26,.92);border:1px solid var(--line2);padding:8px 14px;border-radius:999px;font-size:12px}
+#busy.on{display:flex}
+.spin{width:14px;height:14px;border:2px solid #555;border-top-color:var(--accent);border-radius:50%;animation:s 1s linear infinite}
+@keyframes s{to{transform:rotate(360deg)}}
+
+/* side panel */
+#panel{border-left:1px solid var(--line);background:var(--panel);display:flex;flex-direction:column;min-height:0}
+.sec{padding:14px}
+.sec h3{margin:0 0 10px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);font-weight:600}
+#looksSec{flex:1 1 auto;overflow-y:auto;min-height:160px;border-bottom:1px solid var(--line)}
+#adjSec{flex:0 1 auto;overflow-y:auto;max-height:60%}
+.grp{font-size:11px;color:var(--accent);margin:14px 0 6px;font-weight:600;scroll-margin-top:84px}
+.chips{display:flex;flex-wrap:wrap;gap:5px;margin:0 0 10px;position:sticky;top:-14px;z-index:2;background:var(--panel);padding:6px 0}
+.chips button{padding:3px 9px;border-radius:999px;font-size:11px;color:var(--dim)}
+.chips button:hover{color:var(--text)}
+.grp:first-of-type{margin-top:0}
+.looks{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.look{cursor:pointer;border-radius:7px;padding:3px;border:2px solid transparent;background:var(--panel2);text-align:left;color:var(--text)}
+.look:hover{border-color:var(--line2)}
+.look[aria-pressed="true"]{border-color:var(--accent)}
+.look canvas{width:100%;aspect-ratio:1/1;object-fit:cover;display:block;border-radius:4px;background:#2a2a2f}
+.look span{display:block;font-size:10.5px;padding:4px 2px 1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.look{position:relative}
+.look.add{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;border:2px dashed var(--line2);
+  background:transparent;color:var(--dim);aspect-ratio:1/1.18;padding:6px;text-align:center}
+.look.add b{font-size:22px;line-height:1;color:var(--accent);font-weight:400}
+.look.add span{font-size:10.5px;padding:0;white-space:normal}
+.look.add:hover{border-color:var(--accent);color:var(--text)}
+.look .rmL{position:absolute;top:6px;right:6px;width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,.75);color:#fff;
+  font-size:12px;line-height:18px;text-align:center;opacity:0;transition:opacity .15s}
+.look:hover .rmL,.look:focus-visible .rmL{opacity:1}
+.look .rmL:hover{background:var(--danger)}
+.lutHint{font-size:11px;color:var(--faint);margin:6px 0 0}
+.lookFoot{margin-top:16px;padding-top:12px;border-top:1px solid var(--line)}
+.lookFoot button{width:100%;text-align:left;display:flex;flex-direction:column;gap:1px;padding:9px 12px}
+.lookFoot small{color:var(--faint);font-size:11px}
+#lookDesc{font-size:11.5px;color:var(--dim);margin:-2px 0 10px;min-height:16px}
+.sg{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);margin:12px 0 6px}
+.sg:first-child{margin-top:0}
+.sl{margin-bottom:8px}
+.sl label{display:flex;justify-content:space-between;color:var(--dim);font-size:12px;margin-bottom:2px}
+.sl label output{color:var(--text);font-variant-numeric:tabular-nums}
+.sl.changed label{color:var(--text)}
+.sl input{width:100%;accent-color:var(--accent);margin:2px 0}
+.row{display:flex;gap:8px;margin-top:12px}
+.row button{flex:1}
+
+/* dialogs & toast */
+dialog{background:var(--panel);color:var(--text);border:1px solid var(--line2);border-radius:14px;padding:22px;width:400px;
+  box-shadow:0 20px 60px rgba(0,0,0,.6)}
+dialog::backdrop{background:rgba(0,0,0,.55)}
+dialog h2{margin:0 0 16px;font-size:17px;font-weight:600}
+.field{margin-bottom:14px}
+.field>.lbl{display:block;color:var(--dim);font-size:12px;margin-bottom:6px}
+.field select{width:100%}
+.radio{display:flex;gap:8px}
+.radio label{flex:1;display:flex;gap:8px;align-items:center;padding:9px 10px;border:1px solid var(--line);border-radius:8px;cursor:pointer}
+.radio label:has(input:checked){border-color:var(--accent);background:rgba(240,166,74,.07)}
+.radio input,.check input{accent-color:var(--accent);margin:0}
+.check{display:flex;gap:8px;align-items:center;color:var(--dim);cursor:pointer}
+.actions{display:flex;justify-content:flex-end;gap:8px;margin-top:20px}
+.keys{display:grid;grid-template-columns:auto 1fr;gap:8px 14px;align-items:center;font-size:12.5px;color:var(--dim)}
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(8px);background:#26262c;border:1px solid var(--line2);
+  padding:10px 16px;border-radius:10px;opacity:0;transition:opacity .2s,transform .2s;pointer-events:none;z-index:9;max-width:80vw}
+#toast.on{opacity:1;transform:translateX(-50%)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation-duration:3s!important}}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">DARK<span>ROOM</span></div>
+  <button id="openBtn" title="Add photos (⌘O)">+ Add photos</button>
+  <input type="file" id="fileIn" multiple accept=".jpg,.jpeg,.png,.webp,.cr2,image/jpeg,image/png,image/webp" hidden>
+  <div class="spacer"></div>
+  <div class="seg">
+    <button class="ghost" id="undoBtn" title="Undo (⌘Z)" aria-label="Undo" disabled>↶</button>
+    <button class="ghost" id="redoBtn" title="Redo (⇧⌘Z)" aria-label="Redo" disabled>↷</button>
+  </div>
+  <label class="toggle" title="Before / After split (\)"><input type="checkbox" id="splitChk"> Before / After</label>
+  <button class="ghost" id="helpBtn" title="Keyboard shortcuts (?)" aria-label="Keyboard shortcuts">?</button>
+  <button id="exportBtn" class="primary" disabled title="Export (⌘E)">Export…</button>
+</header>
+<main>
+  <nav id="strip" aria-label="Photos"></nav>
+  <section id="viewer" aria-label="Photo preview">
+    <div id="empty">
+      <h2>Drop your photos here</h2>
+      <div>JPG or Canon RAW (.CR2) straight from your camera.<br>Nothing is uploaded. Everything stays on this computer.</div>
+      <button class="primary" id="openBtn2">Choose photos</button>
+      <div class="tip">Tip: set your camera to the <b>Neutral</b> Picture Style. Flat photos take these looks best.</div>
+    </div>
+    <div id="stage">
+      <canvas id="view" aria-label="Edited photo"></canvas>
+      <div id="divider"></div>
+      <div class="tag l">Before</div><div class="tag r">After</div>
+    </div>
+    <div id="info"></div>
+    <div id="busy" role="status"><div class="spin"></div><span id="busyTxt">Loading…</span></div>
+  </section>
+  <aside id="panel">
+    <div class="sec" id="looksSec"><h3>Looks</h3><div id="lookDesc"></div><div id="looks"></div>
+      <div class="lookFoot"><button id="saveLutsBtn">Save looks as LUT files<small>Use them in Lightroom, Photoshop, VSCO and more</small></button></div>
+    </div>
+    <input type="file" id="lutIn" multiple accept=".cube" hidden>
+    <div class="sec" id="adjSec"><h3>Adjust</h3><div id="sliders"></div>
+      <div class="row"><button id="resetBtn" title="Reset adjustments for this photo">Reset</button>
+        <button id="applyAll" title="Copy this photo's look and adjustments to every photo">Apply to all</button></div>
+    </div>
+  </aside>
+</main>
+
+<dialog id="exportDlg">
+  <form method="dialog">
+    <h2>Export photos</h2>
+    <div class="field"><span class="lbl">Photos</span>
+      <div class="radio">
+        <label><input type="radio" name="which" value="current" checked> This photo</label>
+        <label><input type="radio" name="which" value="all"> <span id="allLbl">All photos</span></label>
+      </div></div>
+    <div class="field"><label class="lbl" for="exSize">Size (long edge)</label>
+      <select id="exSize">
+        <option value="0">Full size, as shot</option>
+        <option value="3840">Large: 3840 px</option>
+        <option value="2048">Web: 2048 px</option>
+        <option value="1080">Instagram: 1080 px</option>
+      </select></div>
+    <div class="field"><label class="lbl" for="exQ">JPEG quality</label>
+      <select id="exQ">
+        <option value="0.95">Maximum</option>
+        <option value="0.9">High</option>
+        <option value="0.82">Smaller files</option>
+      </select></div>
+    <label class="check"><input type="checkbox" id="exExif" checked> Keep camera info (date, lens, settings)</label>
+    <div class="actions"><button value="cancel" formnovalidate>Cancel</button><button value="ok" class="primary" id="exGo">Export</button></div>
+  </form>
+</dialog>
+
+<dialog id="helpDlg">
+  <form method="dialog">
+    <h2>Keyboard shortcuts</h2>
+    <div class="keys">
+      <span><kbd>⌘</kbd> <kbd>O</kbd></span><span>Add photos</span>
+      <span><kbd>⌘</kbd> <kbd>E</kbd></span><span>Export</span>
+      <span><kbd>⌘</kbd> <kbd>Z</kbd> / <kbd>⇧</kbd><kbd>⌘</kbd><kbd>Z</kbd></span><span>Undo / Redo</span>
+      <span><kbd>←</kbd> <kbd>→</kbd></span><span>Previous / next photo</span>
+      <span><kbd>↑</kbd> <kbd>↓</kbd></span><span>Previous / next look</span>
+      <span><kbd>B</kbd> (hold)</span><span>Show the original</span>
+      <span><kbd>\</kbd></span><span>Before / After split</span>
+      <span><kbd>⌫</kbd></span><span>Remove photo from the list (your file is not deleted)</span>
+      <span>Double-click</span><span>Reset a slider</span>
+    </div>
+    <div class="actions"><button value="close" class="primary">Done</button></div>
+  </form>
+</dialog>
+<dialog id="askDlg">
+  <form method="dialog">
+    <h2 id="askTitle"></h2><div id="askBody" style="color:var(--dim)"></div>
+    <div class="actions"><button value="no">Cancel</button><button value="yes" class="primary" id="askOk"></button></div>
+  </form>
+</dialog>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+'use strict';
+// ================================================================= shaders
+const VS = `#version 300 es
+in vec2 p; out vec2 vUv;
+void main(){ vUv = vec2((p.x+1.0)*0.5, (1.0-p.y)*0.5); gl_Position = vec4(p,0.0,1.0); }`;
+
+const FS = `#version 300 es
+precision highp float;
+precision highp sampler3D;
+in vec2 vUv; out vec4 o;
+uniform sampler2D uImg; uniform vec2 uTexSize;
+uniform sampler3D uLut; uniform float uUseLut, uLutSize; uniform vec2 uLutDomain;
+uniform float uExposure, uWarm, uTint;
+uniform mat3 uMix;
+uniform float uSat, uContrast, uFade, uBW; uniform vec3 uBWW;
+uniform vec3 uShadow, uHigh, uLift, uGamma, uGain;
+uniform float uHS[6]; uniform float uHH[6]; uniform float uHL[6];
+uniform float uStrength, uGrain, uGlow, uVignette, uSplit;
+const vec3 LW = vec3(0.2126,0.7152,0.0722);
+
+vec3 toLin(vec3 c){ return mix(c/12.92, pow((c+0.055)/1.055, vec3(2.4)), step(0.04045,c)); }
+vec3 toSrgb(vec3 c){ c=max(c,0.0); return mix(c*12.92, 1.055*pow(c,vec3(1.0/2.4))-0.055, step(0.0031308,c)); }
+vec3 rgb2hsv(vec3 c){
+  vec4 K=vec4(0.,-1./3.,2./3.,-1.);
+  vec4 p=mix(vec4(c.bg,K.wz),vec4(c.gb,K.xy),step(c.b,c.g));
+  vec4 q=mix(vec4(p.xyw,c.r),vec4(c.r,p.yzx),step(p.x,c.r));
+  float d=q.x-min(q.w,q.y); float e=1e-10;
+  return vec3(abs(q.z+(q.w-q.y)/(6.*d+e)), d/(q.x+e), q.x);
+}
+vec3 hsv2rgb(vec3 c){
+  vec4 K=vec4(1.,2./3.,1./3.,3.);
+  vec3 p=abs(fract(c.xxx+K.xyz)*6.-K.www);
+  return c.z*mix(K.xxx, clamp(p-K.xxx,0.,1.), c.y);
+}
+float band(float a[6], float h){
+  float p=clamp(h,0.0,1.0)*6.0; int i=int(floor(p))%6; int j=(i+1)%6;
+  return mix(a[i],a[j],fract(p));
+}
+float hash(vec2 p){ p=fract(p*vec2(123.34,456.21)); p+=dot(p,p+45.32); return fract(p.x*p.y); }
+float vnoise(vec2 p){
+  vec2 i=floor(p), f=fract(p); f=f*f*(3.-2.*f);
+  float a=hash(i), b=hash(i+vec2(1,0)), c=hash(i+vec2(0,1)), d=hash(i+vec2(1,1));
+  return mix(mix(a,b,f.x),mix(c,d,f.x),f.y);
+}
+void main(){
+  vec2 uv=vUv;
+  vec3 src=texture(uImg,uv).rgb;
+  vec3 wb=vec3(1.0+0.12*uWarm+0.04*uTint, 1.0-0.08*uTint, 1.0-0.12*uWarm+0.04*uTint);
+  vec3 lin=toLin(src)*exp2(uExposure)*wb;
+
+  if(uGlow>0.0){
+    float lod=log2(max(uTexSize.x,uTexSize.y)/90.0);
+    vec2 px=exp2(lod)/uTexSize*1.5;
+    vec3 b=textureLod(uImg,uv,lod).rgb
+      +textureLod(uImg,uv+vec2(px.x,0),lod).rgb+textureLod(uImg,uv-vec2(px.x,0),lod).rgb
+      +textureLod(uImg,uv+vec2(0,px.y),lod).rgb+textureLod(uImg,uv-vec2(0,px.y),lod).rgb;
+    b=toLin(b/5.0)*exp2(uExposure)*wb;
+    lin+=max(b-0.4,0.0)*vec3(1.0,0.5,0.32)*uGlow*1.6;
+  }
+  vec3 base=toSrgb(lin);
+
+  vec3 g=toSrgb(uMix*lin);
+  if(uUseLut>0.5){
+    vec3 x=clamp((g-uLutDomain.x)/(uLutDomain.y-uLutDomain.x),0.0,1.0);
+    g=texture(uLut,x*((uLutSize-1.0)/uLutSize)+0.5/uLutSize).rgb;
+  }
+  vec3 h=rgb2hsv(clamp(g,0.,1.));
+  float s=h.y;
+  h.x=fract(h.x+band(uHH,h.x)*smoothstep(0.0,0.2,s));
+  h.y=clamp(h.y*band(uHS,h.x),0.,1.);
+  h.z*=1.0+band(uHL,h.x)*s;
+  g=hsv2rgb(h);
+  float l=dot(g,LW);
+  g=mix(vec3(l),g,uSat);
+  if(uBW>0.5){ g=vec3(dot(max(g,0.0),uBWW)); }
+  g=clamp(g,0.,1.);
+  g=mix(g,g*g*(3.-2.*g),uContrast);
+  l=dot(clamp(g,0.,1.),LW);
+  g+=uShadow*pow(1.-l,2.0)+uHigh*pow(l,2.0);
+  g=clamp(g,0.,1.);
+  g=uGain*(g+uLift*(1.-g));
+  g=pow(max(g,0.),1.0/uGamma);
+  g=uFade+g*(1.0-uFade*1.3);
+  vec3 c=mix(base,clamp(g,0.,1.),uStrength);
+
+  float asp=uTexSize.x/uTexSize.y;
+  float r=length((uv-0.5)*vec2(asp,1.0))/length(vec2(asp,1.0)*0.5);
+  c*=1.0-uVignette*smoothstep(0.3,1.05,r)*0.75;
+
+  if(uGrain>0.0){
+    vec2 gp=uv*uTexSize*(1800.0/max(uTexSize.x,uTexSize.y));
+    float n=vnoise(gp)*0.6+vnoise(gp*2.13+17.0)*0.4-0.5;
+    float ll=dot(clamp(c,0.,1.),LW);
+    c+=n*uGrain*0.32*(1.0-0.7*pow(abs(ll-0.5)*2.0,2.0));
+  }
+  if(uv.x<uSplit) c=src;
+  o=vec4(clamp(c,0.,1.),1.0);
+}`;
+
+// ================================================================= looks
+// Hue bands are in this order: red, yellow, green, cyan, blue, magenta.
+// hs = saturation multiplier, hh = hue shift (fraction of the colour wheel), hl = brightness change.
+const DEF = {mix:[1,0,0,0,1,0,0,0,1], sat:1, contrast:0, fade:0, bw:0, bww:[.299,.587,.114],
+  shadow:[0,0,0], high:[0,0,0], lift:[0,0,0], gamma:[1,1,1], gain:[1,1,1],
+  hs:[1,1,1,1,1,1], hh:[0,0,0,0,0,0], hl:[0,0,0,0,0,0]};
+const LOOKS = [
+  {id:'none', name:'Original', group:'Original', desc:'Your photo, untouched', p:{}},
+
+  // ---------------------------------------------------------------- Fuji-inspired
+  {id:'chrome', name:'Chrome Classic', group:'Fuji-inspired', desc:'Muted documentary colour with deep blues. Inspired by Fujifilm Classic Chrome',
+   p:{sat:.78, contrast:.38, fade:.02, hs:[.85,.78,.72,.9,.95,.8], hh:[0,0,.02,0,-.015,0], hl:[0,-.04,-.08,-.05,-.15,0],
+      shadow:[-.01,.006,.016], high:[.014,.008,-.01]}},
+  {id:'velvia', name:'Vivid Slide', group:'Fuji-inspired', desc:'Punchy slide film, rich greens and skies. Inspired by Fujichrome Velvia',
+   p:{sat:1.3, contrast:.5, hs:[1.2,1.1,1.35,1.3,1.3,1.2], hh:[-.01,-.01,.01,0,.01,0], hl:[-.05,0,-.08,-.05,-.12,-.05],
+      lift:[-.01,-.01,-.01]}, fx:{vignette:.15}},
+  {id:'neg', name:'Nostalgic Neg', group:'Fuji-inspired', desc:'Hard contrast, teal shadows, warm highlights. Inspired by Fujifilm Nostalgic Neg',
+   p:{sat:.85, contrast:.55, fade:.03, mix:[1.02,-.02,0, 0,1,0, 0,.04,.96], hs:[.9,.85,.8,1,.9,.85], hh:[.015,-.02,.05,0,-.01,0],
+      hl:[0,0,-.1,0,-.1,0], shadow:[-.025,.01,.022], high:[.03,.01,-.025]}, fx:{grain:.2}},
+  {id:'eterna', name:'Cine Soft', group:'Fuji-inspired', desc:'Low-contrast cinema film, gentle and muted. Inspired by Fujifilm Eterna',
+   p:{sat:.7, contrast:-.15, fade:.04, hs:[.85,.75,.7,.9,.85,.8], hh:[0,-.01,.03,0,0,0], shadow:[-.02,.005,.02], high:[.01,.008,-.005]}},
+  {id:'portrait', name:'Portrait Soft', group:'Fuji-inspired', desc:'Flattering skin, soft pastels. Inspired by Fujifilm Astia',
+   p:{sat:.95, contrast:.12, fade:.01, hs:[1,1.05,.9,.95,.95,.95], hh:[.01,-.005,.01,0,0,0], hl:[.05,.04,0,0,-.03,0],
+      high:[.012,.006,0]}},
+  {id:'superia', name:'Street 400', group:'Fuji-inspired', desc:'Everyday colour film with a green-cyan bite. Inspired by Fujicolor Superia 400',
+   p:{sat:1.05, contrast:.35, mix:[1,0,0, 0,1.02,-.02, 0,.03,.97], hs:[1.05,1,1.1,1.1,1,1], hh:[0,.01,.05,0,-.02,0],
+      shadow:[-.02,.015,.01], high:[0,.01,-.01]}, fx:{grain:.25}},
+  {id:'pro400h', name:'Pastel 400', group:'Fuji-inspired', desc:'Airy, bright pastels with minty greens. Inspired by Fujifilm Pro 400H',
+   p:{sat:.8, contrast:-.05, fade:.03, lift:[.03,.035,.04], hs:[.85,.9,.85,1.05,.9,.85], hh:[0,.01,.06,-.01,-.02,0],
+      high:[-.005,.005,.01]}, fx:{grain:.15}},
+  {id:'reala', name:'Natural Ace', group:'Fuji-inspired', desc:'True-to-life colour with a clean, cool edge. Inspired by Fujifilm Reala Ace',
+   p:{sat:1, contrast:.2, hs:[.95,1,1,1.05,1.05,1], shadow:[-.005,0,.01]}},
+
+  // ---------------------------------------------------------------- Kodak-inspired
+  {id:'portra400', name:'Portrait 400', group:'Kodak-inspired', desc:'Warm, soft and flattering, the wedding-photographer favourite. Inspired by Kodak Portra 400',
+   p:{sat:.9, contrast:.12, fade:.025, hs:[.95,1,.75,.85,.85,.85], hh:[.01,-.01,-.03,0,-.015,0], hl:[.03,.03,-.03,0,-.05,0],
+      shadow:[.01,.005,-.005], high:[.02,.012,-.005], gain:[1.02,1,.97]}, fx:{grain:.15}},
+  {id:'portra160', name:'Portrait 160', group:'Kodak-inspired', desc:'Subtle, natural skin tones in a cooler, quieter palette. Inspired by Kodak Portra 160',
+   p:{sat:.82, contrast:.08, fade:.02, hs:[.9,.9,.7,.85,.9,.85], hh:[.005,0,-.01,0,-.01,0], shadow:[-.004,.002,.01], high:[.008,.006,.004]}},
+  {id:'gold', name:'Golden 200', group:'Kodak-inspired', desc:'Sunny, nostalgic yellows. Holiday snapshots from the 90s. Inspired by Kodak Gold 200',
+   p:{sat:1.05, contrast:.25, fade:.02, hs:[1.05,1.2,.85,.9,.95,.95], hh:[.01,-.01,-.04,0,0,0], shadow:[.015,.008,-.01],
+      high:[.035,.02,-.03], gain:[1.03,1.01,.92]}, fx:{grain:.25}},
+  {id:'ektar', name:'Vivid 100', group:'Kodak-inspired', desc:'The most saturated colour negative: bold reds and blues. Inspired by Kodak Ektar 100',
+   p:{sat:1.25, contrast:.4, hs:[1.3,1.1,1.1,1.15,1.25,1.15], hh:[-.01,0,.01,0,0,0], hl:[-.04,0,-.05,0,-.08,0], lift:[-.01,-.01,-.01]}},
+  {id:'ektachrome', name:'Clean Slide', group:'Kodak-inspired', desc:'Crisp, clean slide film with cool, neutral whites. Inspired by Kodak Ektachrome E100',
+   p:{sat:1.15, contrast:.42, hs:[1.05,1,1.1,1.2,1.2,1.05], shadow:[-.01,0,.02], high:[-.005,0,.01], lift:[-.012,-.012,-.012]}},
+  {id:'kodachrome', name:'Heritage 64', group:'Kodak-inspired', desc:'Rich reds, deep blues, timeless magazine colour. Inspired by Kodachrome 64',
+   p:{sat:1.15, contrast:.5, hs:[1.25,1.15,.9,1,1.15,1.1], hh:[-.01,-.02,.02,0,.01,0], hl:[-.06,0,-.06,0,-.12,0],
+      shadow:[0,0,.01], high:[.02,.01,-.015]}, fx:{vignette:.15}},
+  {id:'cinestill', name:'Tungsten 800', group:'Kodak-inspired', desc:'Night city film: cool tones and red glow around lights. Inspired by CineStill 800T',
+   p:{sat:.95, contrast:.3, mix:[.97,0,.03, 0,1,0, 0,.02,1.04], hs:[1.1,.9,.75,1.1,1.1,1], hh:[0,-.02,.05,0,0,0],
+      shadow:[-.03,.01,.04], high:[.01,.005,0], gain:[.97,1,1.05]}, fx:{glow:.5, grain:.3}},
+  {id:'vision3', name:'Cinema 500T', group:'Kodak-inspired', desc:'Modern motion-picture negative: soft, rich, cinematic. Inspired by Kodak Vision3 500T',
+   p:{sat:.9, contrast:.15, fade:.02, hh:[0,-.01,.02,0,0,0], shadow:[-.015,.005,.02], high:[.015,.008,0], gain:[1,1,1.02]}, fx:{grain:.2}},
+
+  // ---------------------------------------------------------------- Hollywood-inspired
+  {id:'teal', name:'Blockbuster', group:'Hollywood-inspired', desc:'Teal & orange action-movie grade',
+   p:{sat:1.05, contrast:.35, mix:[1.05,-.03,-.02, -.02,1,.02, -.04,.02,1.02], hs:[1.15,1.15,.7,1.2,1.1,.7],
+      hh:[.01,-.03,.08,0,-.04,.04], shadow:[-.04,0,.035], high:[.035,.012,-.03]}, fx:{vignette:.2}},
+  {id:'epic', name:'Epic Natural', group:'Hollywood-inspired', desc:'Natural, gently warm large-format film. Inspired by Christopher Nolan’s IMAX films',
+   p:{sat:.95, contrast:.3, hh:[0,-.01,.02,0,0,0], shadow:[-.01,0,.01], high:[.015,.008,-.005]}, fx:{grain:.1}},
+  {id:'print', name:'Cinema Print', group:'Hollywood-inspired', desc:'Classic projection print film, dense and warm. Inspired by Kodak 2383',
+   p:{sat:.95, contrast:.45, fade:.015, mix:[1,0,0, 0,1,0, 0,.03,.97], hs:[1.05,.95,.8,1,.9,.9], hh:[0,-.02,.04,0,-.01,0],
+      shadow:[-.03,.005,.03], high:[.025,.01,-.02], gain:[1,.985,.95], lift:[0,.005,.015]}, fx:{glow:.15, vignette:.15}},
+  {id:'thriller', name:'Cold Thriller', group:'Hollywood-inspired', desc:'Desaturated, sickly yellow-green tension. Inspired by David Fincher’s films',
+   p:{sat:.6, contrast:.45, hs:[.7,.9,.7,.8,.7,.6], hh:[0,.02,-.03,0,0,0], shadow:[-.015,.01,.02], high:[.02,.03,-.03],
+      gamma:[.98,.98,.96]}, fx:{vignette:.25}},
+  {id:'matrix', name:'Code Green', group:'Hollywood-inspired', desc:'Cold digital green cast. Inspired by The Matrix',
+   p:{sat:.7, contrast:.5, mix:[.82,.18,0, 0,1.08,0, 0,.18,.78], hh:[0,.03,0,0,0,0], shadow:[-.035,.045,-.02], high:[-.025,.05,-.045]},
+   fx:{grain:.1, vignette:.2}},
+  {id:'symmetry', name:'Pastel Symmetry', group:'Hollywood-inspired', desc:'Candy pinks and creamy yellows, storybook pastel. Inspired by Wes Anderson',
+   p:{sat:1, contrast:-.1, fade:.04, hs:[1.15,1.3,.75,.8,.75,1.3], hh:[.015,-.02,-.05,0,.03,0], hl:[.08,.06,.02,0,.02,.08],
+      high:[.05,.02,.02], gain:[1.03,.99,.95], lift:[.05,.035,.05]}},
+  {id:'amelie', name:'Parisian Dream', group:'Hollywood-inspired', desc:'Rich reds and greens bathed in gold. Inspired by Amélie',
+   p:{sat:1.2, contrast:.35, hs:[1.3,1.25,1.2,.8,.6,.9], hh:[0,-.02,-.04,0,0,0], shadow:[.01,.015,-.02], high:[.04,.03,-.03],
+      gain:[1.04,1.02,.9]}, fx:{glow:.15, vignette:.3}},
+  {id:'haze', name:'Orange Haze', group:'Hollywood-inspired', desc:'Dusty, monochrome orange atmosphere. Inspired by Blade Runner 2049',
+   p:{sat:.9, contrast:.2, fade:.05, hs:[1.3,1.3,.3,.3,.3,.6], hh:[.02,-.06,-.12,0,0,0], shadow:[.02,0,-.02], high:[.06,.02,-.06],
+      gain:[1.06,.97,.8]}, fx:{glow:.3}},
+  {id:'desert', name:'Desert Gold', group:'Hollywood-inspired', desc:'Scorched golden epic with teal shadows. Inspired by Mad Max: Fury Road and Dune',
+   p:{sat:1, contrast:.4, hs:[1.1,1.2,.6,.9,1.1,.8], hh:[0,-.03,-.06,0,0,0], shadow:[-.02,0,.03], high:[.05,.025,-.04],
+      gain:[1.04,1,.88]}, fx:{vignette:.2}},
+  {id:'border', name:'Border Heat', group:'Hollywood-inspired', desc:'Hot, hazy yellow sun-baked grade. Inspired by Breaking Bad and Sicario',
+   p:{sat:1.05, contrast:.45, hs:[1.1,1.2,.7,.7,.7,.8], shadow:[.01,0,-.03], high:[.05,.035,-.06], gain:[1.05,1,.82]}, fx:{grain:.2}},
+  {id:'moon', name:'Moonlight', group:'Hollywood-inspired', desc:'Deep cyan-blue nights with glowing skin. Inspired by Moonlight',
+   p:{sat:1.05, contrast:.35, hs:[1.1,1,.8,1.3,1.3,1.2], hh:[0,0,.05,0,0,.02], shadow:[-.05,.012,.07], high:[-.015,.015,.025],
+      gain:[.92,1,1.08]}, fx:{vignette:.3}},
+  {id:'neon', name:'Neon Noir', group:'Hollywood-inspired', desc:'Sci-fi night: cyan and magenta glow. Inspired by Blade Runner',
+   p:{sat:1.15, contrast:.45, hs:[1.2,.85,.55,1.3,1.3,1.3], hh:[-.02,-.03,.12,.02,.03,0], hl:[0,-.1,-.2,0,0,0],
+      shadow:[-.02,.01,.05], high:[.03,-.01,.03], gamma:[1,.97,1.03]}, fx:{glow:.35, vignette:.3}},
+  {id:'nightday', name:'Day for Night', group:'Hollywood-inspired', desc:'Turns daylight into blue moonlit night. A classic film-set trick',
+   p:{sat:.6, contrast:.3, gain:[.65,.75,.95], lift:[-.02,-.02,-.02], shadow:[-.02,0,.04]}, fx:{vignette:.4}},
+  {id:'bleach', name:'Bleach Bypass', group:'Hollywood-inspired', desc:'Gritty, silvery war-film look. Inspired by Saving Private Ryan',
+   p:{sat:.45, contrast:.65, shadow:[-.005,0,.01], gamma:[1,1,1.02]}, fx:{grain:.15, vignette:.25}},
+  {id:'seventies', name:'Seventies', group:'Hollywood-inspired', desc:'Faded, warm 70s film stock. Inspired by The Godfather era',
+   p:{sat:.9, contrast:.2, fade:.06, hs:[1,1.05,.75,.85,.8,.9], hh:[0,-.01,-.05,0,0,0], shadow:[.02,.005,-.02],
+      high:[.03,.015,-.03], gain:[1.02,1,.94]}, fx:{grain:.25, vignette:.25}},
+
+  // ---------------------------------------------------------------- Black & White
+  {id:'acros', name:'Mono Fine', group:'Black & White', desc:'Fine-grain black & white with rich tones. Inspired by Fujifilm Acros',
+   p:{bw:1, bww:[.25,.65,.10], contrast:.45, lift:[-.01,-.01,-.01]}, fx:{grain:.35}},
+  {id:'trix', name:'Push 400', group:'Black & White', desc:'Gritty, punchy street black & white. Inspired by Kodak Tri-X pushed',
+   p:{bw:1, bww:[.3,.6,.1], contrast:.7, lift:[-.02,-.02,-.02]}, fx:{grain:.55, vignette:.2}},
+  {id:'hp5', name:'Soft Silver', group:'Black & White', desc:'Gentle, silvery black & white with soft grain. Inspired by Ilford HP5',
+   p:{bw:1, bww:[.3,.59,.11], contrast:.25, fade:.03}, fx:{grain:.3}},
+  {id:'redfilter', name:'Red Filter', group:'Black & White', desc:'Dramatic dark skies and bright skin, like a red lens filter',
+   p:{bw:1, bww:[.75,.35,-.1], contrast:.55}, fx:{grain:.2, vignette:.15}},
+  {id:'noir', name:'Film Noir', group:'Black & White', desc:'High-contrast 1940s detective black & white',
+   p:{bw:1, bww:[.35,.55,.10], contrast:.8, gamma:[.95,.95,.95]}, fx:{grain:.2, vignette:.35}},
+  {id:'sepia', name:'Sepia Print', group:'Black & White', desc:'Warm-toned antique darkroom print',
+   p:{bw:1, bww:[.3,.59,.11], contrast:.3, fade:.04, shadow:[.08,.04,-.03], high:[.06,.035,-.02], gain:[1.07,.99,.84]}, fx:{grain:.2, vignette:.3}},
+];
+const LOOK = Object.fromEntries(LOOKS.map(l=>[l.id,l]));
+function lookParams(s){
+  const p = Object.assign({}, DEF, (LOOK[s.look]||LOOKS[0]).p);
+  p.contrast += s.contrast; p.sat *= s.saturation;
+  return p;
+}
+
+// ================================================================= renderer
+class Renderer{
+  constructor(canvas){
+    this.c = canvas;
+    const gl = this.gl = canvas.getContext('webgl2',{preserveDrawingBuffer:true,antialias:false,premultipliedAlpha:false});
+    if(!gl) throw new Error('This browser does not support WebGL2.');
+    const sh=(t,src)=>{const s=gl.createShader(t);gl.shaderSource(s,src);gl.compileShader(s);
+      if(!gl.getShaderParameter(s,gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s)); return s;};
+    const pr=this.prog=gl.createProgram();
+    gl.attachShader(pr,sh(gl.VERTEX_SHADER,VS)); gl.attachShader(pr,sh(gl.FRAGMENT_SHADER,FS)); gl.linkProgram(pr);
+    if(!gl.getProgramParameter(pr,gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(pr));
+    gl.useProgram(pr);
+    gl.bindBuffer(gl.ARRAY_BUFFER,gl.createBuffer());
+    gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,1,1]),gl.STATIC_DRAW);
+    const loc=gl.getAttribLocation(pr,'p'); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc,2,gl.FLOAT,false,0,0);
+    this.tex=gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D,this.tex);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR_MIPMAP_LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+    this.max=gl.getParameter(gl.MAX_TEXTURE_SIZE); this.u={}; this.tw=0;
+    gl.uniform1i(this.U('uImg'),0); gl.uniform1i(this.U('uLut'),1);
+    this.luts=new Map();
+    this.dummy=this.make3D(2,new Float32Array([0,0,0,1,0,0,0,1,0,1,1,0,0,0,1,1,0,1,0,1,1,1,1,1]));
+  }
+  U(n){ return n in this.u ? this.u[n] : (this.u[n]=this.gl.getUniformLocation(this.prog,n)); }
+  make3D(size,data){
+    const gl=this.gl, t=gl.createTexture();
+    gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_3D,t);
+    for(const [k,v] of [[gl.TEXTURE_MIN_FILTER,gl.LINEAR],[gl.TEXTURE_MAG_FILTER,gl.LINEAR],
+      [gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE],[gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE],[gl.TEXTURE_WRAP_R,gl.CLAMP_TO_EDGE]]) gl.texParameteri(gl.TEXTURE_3D,k,v);
+    gl.texImage3D(gl.TEXTURE_3D,0,gl.RGB16F,size,size,size,0,gl.RGB,gl.FLOAT,data);
+    gl.activeTexture(gl.TEXTURE0); return t;
+  }
+  dropLut(id){ const t=this.luts.get(id); if(t){ this.gl.deleteTexture(t); this.luts.delete(id); } }
+  setImage(src){
+    const gl=this.gl; gl.bindTexture(gl.TEXTURE_2D,this.tex);
+    gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,src);
+    gl.generateMipmap(gl.TEXTURE_2D); this.tw=src.width; this.th=src.height;
+  }
+  setPixels(w,h,data){
+    const gl=this.gl; gl.bindTexture(gl.TEXTURE_2D,this.tex);
+    gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,w,h,0,gl.RGBA,gl.UNSIGNED_BYTE,data);
+    gl.generateMipmap(gl.TEXTURE_2D); this.tw=w; this.th=h;
+  }
+  render(s,w,h,split=-1){
+    const gl=this.gl, U=n=>this.U(n), p=lookParams(s);
+    if(this.c.width!==w) this.c.width=w; if(this.c.height!==h) this.c.height=h;
+    gl.viewport(0,0,w,h);
+    const L=LOOK[s.look];
+    gl.activeTexture(gl.TEXTURE1);
+    if(L?.lut){
+      let t=this.luts.get(L.id); if(!t){ t=this.make3D(L.lut.size,L.lut.data); this.luts.set(L.id,t); gl.activeTexture(gl.TEXTURE1); }
+      gl.bindTexture(gl.TEXTURE_3D,t);
+      gl.uniform1f(U('uUseLut'),1); gl.uniform1f(U('uLutSize'),L.lut.size); gl.uniform2f(U('uLutDomain'),L.lut.dmin,L.lut.dmax);
+    } else { gl.bindTexture(gl.TEXTURE_3D,this.dummy); gl.uniform1f(U('uUseLut'),0); }
+    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D,this.tex);
+    const f=(n,v)=>gl.uniform1f(U(n),v), v3=(n,v)=>gl.uniform3fv(U(n),v);
+    f('uExposure',s.exposure); f('uWarm',s.warmth); f('uTint',s.tint);
+    gl.uniformMatrix3fv(U('uMix'),true,p.mix);
+    f('uSat',p.sat); f('uContrast',p.contrast); f('uFade',p.fade); f('uBW',p.bw); v3('uBWW',p.bww);
+    v3('uShadow',p.shadow); v3('uHigh',p.high); v3('uLift',p.lift); v3('uGamma',p.gamma); v3('uGain',p.gain);
+    gl.uniform1fv(U('uHS'),p.hs); gl.uniform1fv(U('uHH'),p.hh); gl.uniform1fv(U('uHL'),p.hl);
+    f('uStrength',s.strength); f('uGrain',s.grain); f('uGlow',s.glow); f('uVignette',s.vignette); f('uSplit',split);
+    gl.uniform2f(U('uTexSize'),this.tw,this.th);
+    gl.drawArrays(gl.TRIANGLE_STRIP,0,4);
+  }
+}
+
+// ================================================================= decoding
+const isCR2=f=>/\.cr2$/i.test(f.name);
+async function decodeFile(file){
+  if(isCR2(file)) return decodeCR2(file);
+  return createImageBitmap(file,{imageOrientation:'from-image'});
+}
+// Canon CR2: the first image directory holds a full-size JPEG rendered by the camera.
+async function decodeCR2(file){
+  const buf=await file.arrayBuffer(), dv=new DataView(buf);
+  const le=dv.getUint16(0)===0x4949, g16=o=>dv.getUint16(o,le), g32=o=>dv.getUint32(o,le);
+  const ifd=g32(4), n=g16(ifd); let off=0,len=0,orient=1;
+  for(let i=0;i<n;i++){
+    const e=ifd+2+i*12, tag=g16(e), type=g16(e+2), val=type===3?g16(e+8):g32(e+8);
+    if(tag===0x111) off=val; else if(tag===0x117) len=val; else if(tag===0x112) orient=val;
+  }
+  if(!off||!len) throw new Error('could not read this RAW file');
+  let bmp=await createImageBitmap(new Blob([buf.slice(off,off+len)],{type:'image/jpeg'}),{imageOrientation:'none'});
+  if(orient===3||orient===6||orient===8){
+    const w=bmp.width,h=bmp.height,rot=orient!==3, c=document.createElement('canvas');
+    c.width=rot?h:w; c.height=rot?w:h; const x=c.getContext('2d');
+    if(orient===6){x.translate(h,0);x.rotate(Math.PI/2);} else if(orient===8){x.translate(0,w);x.rotate(-Math.PI/2);} else {x.translate(w,h);x.rotate(Math.PI);}
+    x.drawImage(bmp,0,0); bmp.close(); bmp=await createImageBitmap(c);
+  }
+  return bmp;
+}
+async function fit(bmp,maxSide){
+  const k=maxSide/Math.max(bmp.width,bmp.height); if(!(k<1)) return bmp;
+  const out=await createImageBitmap(bmp,{resizeWidth:Math.round(bmp.width*k),resizeHeight:Math.round(bmp.height*k),resizeQuality:'high'});
+  bmp.close(); return out;
+}
+
+// ---- EXIF: copy the camera's metadata into the exported JPEG
+function exifSegment(buf,w,h){
+  const v=new DataView(buf); if(v.byteLength<4||v.getUint16(0)!==0xFFD8) return null;
+  let o=2;
+  while(o+4<=v.byteLength){
+    const m=v.getUint16(o); if((m&0xFF00)!==0xFF00||m===0xFFDA) return null;
+    const len=v.getUint16(o+2);
+    if(m===0xFFE1&&v.getUint32(o+4)===0x45786966){ const seg=new Uint8Array(buf.slice(o,o+2+len)); patchExif(seg,w,h); return seg; }
+    o+=2+len;
+  }
+  return null;
+}
+function patchExif(seg,w,h){
+  const v=new DataView(seg.buffer), t=10, le=v.getUint16(t)===0x4949;
+  const ok=o=>t+o+12<=seg.length, g16=o=>v.getUint16(t+o,le), g32=o=>v.getUint32(t+o,le);
+  const walk=(ifd,fn)=>{ if(!ifd||t+ifd+2>seg.length) return 0; const n=g16(ifd);
+    for(let i=0;i<n;i++){ const e=ifd+2+i*12; if(!ok(e)) return 0; fn(e,g16(e),g16(e+2)); } return ifd+2+n*12; };
+  let exif=0; const ifd0=g32(4);
+  const next=walk(ifd0,(e,tag)=>{ if(tag===0x112) v.setUint16(t+e+8,1,le); if(tag===0x8769) exif=g32(e+8); });
+  if(next&&t+next+4<=seg.length) v.setUint32(t+next,0,le);           // drop the old (un-edited) thumbnail
+  walk(exif,(e,tag,type)=>{ if(tag===0xA002||tag===0xA003){ const val=tag===0xA002?w:h;
+    type===3?v.setUint16(t+e+8,val,le):v.setUint32(t+e+8,val,le); } });
+}
+async function withExif(blob,seg){
+  const out=new Uint8Array(await blob.arrayBuffer());
+  let at=2; if(out[2]===0xFF&&out[3]===0xE0) at=4+((out[4]<<8)|out[5]);     // keep JFIF header first
+  return new Blob([out.subarray(0,at),seg,out.subarray(at)],{type:'image/jpeg'});
+}
+
+// ================================================================= storage
+const nativeApp=window.webkit?.messageHandlers?.darkroom;
+const store={
+  data:{template:null,exportPrefs:null,edits:{}},
+  async load(){
+    try{ const raw=nativeApp?await nativeApp.postMessage({cmd:'loadState'}):localStorage.getItem('darkroom.v1');
+      if(raw) Object.assign(this.data,JSON.parse(raw)); }catch(e){ console.warn('state not loaded',e); }
+  },
+  save(){ clearTimeout(this.t); this.t=setTimeout(()=>{ const raw=JSON.stringify(this.data);
+    try{ nativeApp?nativeApp.postMessage({cmd:'saveState',data:raw}):localStorage.setItem('darkroom.v1',raw); }catch(e){} },400); },
+  // Imported LUTs are kept separately (they are large and rarely change).
+  luts:[],
+  async loadLuts(){
+    try{ const raw=nativeApp?await nativeApp.postMessage({cmd:'loadLuts'}):localStorage.getItem('darkroom.luts');
+      if(raw) this.luts=JSON.parse(raw); }catch(e){ console.warn('LUTs not loaded',e); }
+  },
+  saveLuts(){ const raw=JSON.stringify(this.luts);
+    try{ nativeApp?nativeApp.postMessage({cmd:'saveLuts',data:raw}):localStorage.setItem('darkroom.luts',raw); }
+    catch(e){ toast('Your LUTs are added, but this browser could not save them for next time. The Mac app has no such limit.',6000); } }
+};
+
+// ================================================================= app state
+const $=id=>document.getElementById(id);
+const DEFAULTS={look:'chrome',strength:1,exposure:0,warmth:0,tint:0,contrast:0,saturation:1,grain:0,glow:0,vignette:0};
+const S={photos:[],cur:-1,split:false,splitPos:.5,hold:false};
+const cache=new Map();
+let main,thumbR,exportR;
+try{
+  main=new Renderer($('view'));
+  thumbR=new Renderer(document.createElement('canvas'));
+  exportR=new Renderer(document.createElement('canvas'));
+}catch(e){ document.body.innerHTML='<p style="padding:40px">'+e.message+' Please use a recent version of Chrome or Safari.</p>'; throw e; }
+
+const cur=()=>S.photos[S.cur];
+const keyOf=f=>`${f.name}|${f.size}|${f.lastModified}`;
+function toast(msg,ms=2800){const t=$('toast');t.textContent=msg;t.classList.add('on');clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.remove('on'),ms);}
+function busy(on,txt='Loading…'){$('busy').classList.toggle('on',on);$('busyTxt').textContent=txt;}
+
+// ---- history & persistence
+function snap(p){ p.hist.push({...p.s}); if(p.hist.length>100) p.hist.shift(); p.fut.length=0; syncUndo(); }
+function syncUndo(){ const p=cur(); $('undoBtn').disabled=!p||!p.hist.length; $('redoBtn').disabled=!p||!p.fut.length; }
+function persist(p){
+  const e=store.data.edits; delete e[p.key]; e[p.key]={...p.s};
+  const ks=Object.keys(e); for(let i=0;i<ks.length-500;i++) delete e[ks[i]];
+  store.data.template={...p.s}; store.save();
+}
+// Call after any change to p.s
+function changed(p,{thumbs=true}={}){
+  p.lk.textContent=LOOK[p.s.look].name;
+  if(p===cur()){ syncSliders(); syncLooks(); render(); if(thumbs) lookThumbsSoon(); syncUndo(); }
+  persist(p);
+}
+function undo(){ const p=cur(); if(!p||!p.hist.length) return; p.fut.push({...p.s}); p.s=p.hist.pop(); changed(p); }
+function redo(){ const p=cur(); if(!p||!p.fut.length) return; p.hist.push({...p.s}); p.s=p.fut.pop(); changed(p); }
+
+// ================================================================= sliders
+const pct=v=>Math.round(v*100)+'%', sgn=v=>{const r=Math.round(v*100);return (r>0?'+':'')+r;};
+const SLIDERS=[
+  ['Look'],
+  ['strength','Strength',0,1,.01,pct],
+  ['Light'],
+  ['exposure','Exposure',-2,2,.05,v=>(v>0?'+':'')+v.toFixed(2)+' EV'],
+  ['contrast','Contrast',-.5,.5,.01,sgn],
+  ['Colour'],
+  ['warmth','Warmth',-1,1,.01,sgn],
+  ['tint','Tint',-1,1,.01,sgn],
+  ['saturation','Saturation',0,2,.01,pct],
+  ['Film'],
+  ['grain','Grain',0,1,.01,pct],
+  ['glow','Halation glow',0,1,.01,pct],
+  ['vignette','Vignette',-.5,1,.01,sgn],
+];
+const THUMB_KEYS=['exposure','warmth','tint','contrast','saturation'];
+const sl={};
+for(const [k,label,min,max,step,fmt] of SLIDERS){
+  if(!label){ const g=document.createElement('div'); g.className='sg'; g.textContent=k; $('sliders').appendChild(g); continue; }
+  const d=document.createElement('div'); d.className='sl';
+  d.innerHTML=`<label for="s-${k}">${label}<output for="s-${k}"></output></label><input id="s-${k}" type="range" min="${min}" max="${max}" step="${step}">`;
+  const inp=d.querySelector('input'), out=d.querySelector('output');
+  sl[k]={inp,out,fmt,row:d};
+  inp.addEventListener('input',()=>{ const p=cur(); if(!p) return;
+    if(!p.live){ snap(p); p.live=true; }
+    p.s[k]=+inp.value; out.textContent=fmt(p.s[k]); d.classList.toggle('changed',p.s[k]!==DEFAULTS[k]);
+    render(); if(THUMB_KEYS.includes(k)) lookThumbsSoon(); });
+  inp.addEventListener('change',()=>{ const p=cur(); if(!p) return; p.live=false; persist(p); syncUndo(); });
+  inp.addEventListener('dblclick',()=>{ const p=cur(); if(!p||p.s[k]===DEFAULTS[k]) return; snap(p); p.s[k]=DEFAULTS[k]; changed(p); });
+  $('sliders').appendChild(d);
+}
+function syncSliders(){ const p=cur(), s=p?p.s:DEFAULTS;
+  for(const k in sl){ sl[k].inp.value=s[k]; sl[k].out.textContent=sl[k].fmt(s[k]); sl[k].inp.disabled=!p;
+    sl[k].row.classList.toggle('changed',s[k]!==DEFAULTS[k]); } }
+
+// ================================================================= looks panel
+let lookEls={};
+const MY='My LUTs';
+function buildLooks(){
+  lookEls={}; const root=$('looks'); root.textContent='';
+  const groups=[...new Set([...LOOKS.map(l=>l.group),MY])];
+  const chips=document.createElement('div'); chips.className='chips'; root.appendChild(chips);
+  for(const g of groups){
+    const h=document.createElement('div'); h.className='grp'; h.textContent=g; root.appendChild(h);
+    if(g!=='Original'){ const c=document.createElement('button'); c.textContent=g.replace('-inspired','');
+      c.onclick=()=>h.scrollIntoView({block:'start',behavior:'smooth'}); chips.appendChild(c); }
+    const grid=document.createElement('div'); grid.className='looks'; root.appendChild(grid);
+    for(const L of LOOKS.filter(l=>l.group===g)){
+      const el=document.createElement('button'); el.className='look'; el.title=L.desc; el.setAttribute('aria-pressed','false');
+      el.innerHTML=`<canvas width="200" height="200"></canvas><span></span>`+(L.lut?`<i class="rmL" title="Remove this LUT" aria-label="Remove ${L.name}">×</i>`:'');
+      el.querySelector('span').textContent=L.name;
+      el.onclick=e=>{ if(e.target.classList.contains('rmL')) removeLut(L.id); else selectLook(L.id); };
+      grid.appendChild(el); lookEls[L.id]=el;
+    }
+    if(g===MY){
+      const add=document.createElement('button'); add.className='look add'; add.title='Add a LUT (.cube file)';
+      add.innerHTML='<b>+</b><span>Add LUT</span>'; add.onclick=()=>$('lutIn').click(); grid.appendChild(add);
+      if(!LOOKS.some(l=>l.lut)){ const p=document.createElement('div'); p.className='lutHint';
+        p.textContent='Downloaded a LUT? Click + or drop the .cube file anywhere.'; root.appendChild(p); }
+    }
+  }
+  syncLooks(); drawLookThumbs();
+}
+function syncLooks(){ const id=cur()?cur().s.look:DEFAULTS.look;
+  for(const k in lookEls){ lookEls[k].setAttribute('aria-pressed',String(k===id&&!!cur())); }
+  $('lookDesc').textContent=cur()?LOOK[id].desc:'Add a photo to preview the looks'; }
+function selectLook(id){
+  const p=cur(); if(!p||p.s.look===id) return; const fx=LOOK[id].fx||{};
+  snap(p); p.s.look=id; p.s.grain=fx.grain||0; p.s.glow=fx.glow||0; p.s.vignette=fx.vignette||0;
+  changed(p,{thumbs:false});
+}
+function drawLookThumbs(){
+  const p=cur(); if(!p||!thumbR.tw) return;
+  const w=200, h=Math.round(200*thumbR.th/thumbR.tw);
+  for(const L of LOOKS){
+    const fx=L.fx||{};
+    thumbR.render({...p.s,look:L.id,strength:1,grain:0,glow:fx.glow||0,vignette:fx.vignette||0},w,h);
+    const c=lookEls[L.id].querySelector('canvas'); c.width=w; c.height=h; c.getContext('2d').drawImage(thumbR.c,0,0);
+  }
+}
+let ltT; function lookThumbsSoon(){ clearTimeout(ltT); ltT=setTimeout(drawLookThumbs,200); }
+
+// ================================================================= photos
+const SUPPORTED=/\.(jpe?g|png|webp|cr2)$/i;
+async function addFiles(files){
+  const all=[...files], cubes=all.filter(f=>/\.cube$/i.test(f.name)), ok=all.filter(f=>SUPPORTED.test(f.name));
+  if(cubes.length) await importLuts(cubes);
+  if(!ok.length){ if(all.length>cubes.length) toast('Those files are not supported. Use JPG, PNG or Canon CR2 photos, or .cube LUTs.'); return; }
+  const have=new Set(S.photos.map(p=>p.key));
+  const fresh=ok.filter(f=>!have.has(keyOf(f)));
+  if(!fresh.length){ toast('Those photos are already open.'); return; }
+  const t=store.data.template||DEFAULTS;
+  const tmpl={...DEFAULTS,look:t.look,strength:t.strength,grain:t.grain,glow:t.glow,vignette:t.vignette};
+  const start=S.photos.length;
+  for(const file of fresh){
+    const key=keyOf(file), saved=store.data.edits[key];
+    const el=document.createElement('div'); el.className='item'; el.tabIndex=0; el.setAttribute('role','button');
+    el.innerHTML=`<canvas width="240" height="160"></canvas><div class="nm"></div><div class="lk"></div><button class="rm" title="Remove from list" aria-label="Remove from list">×</button>`;
+    const p={id:Math.random().toString(36).slice(2),key,file,name:file.name,s:{...DEFAULTS,...(saved||tmpl)},el,
+      lk:el.querySelector('.lk'),hist:[],fut:[]};
+    el.querySelector('.nm').textContent=file.name; el.title=file.name; p.lk.textContent=LOOK[p.s.look]?.name||'';
+    if(!LOOK[p.s.look]) p.s.look='none';
+    el.onclick=e=>{ if(e.target.closest('.rm')) removePhoto(S.photos.indexOf(p)); else select(S.photos.indexOf(p)); };
+    el.onkeydown=e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); select(S.photos.indexOf(p)); } };
+    $('strip').appendChild(el); S.photos.push(p);
+  }
+  updateChrome();
+  const restored=fresh.filter(f=>store.data.edits[keyOf(f)]).length;
+  toast(`Added ${fresh.length} photo${fresh.length>1?'s':''}`+(restored?` · restored edits on ${restored}`:''));
+  await select(start);
+  for(const p of S.photos.slice(start)) if(!p.thumbDone&&S.photos.includes(p)){ try{ await getPreview(p); }catch(e){ markBroken(p,e); } }
+}
+function markBroken(p,e){ p.broken=true; p.lk.textContent='Could not open'; p.lk.style.color='var(--danger)'; console.warn(p.name,e); }
+function removePhoto(i){
+  const p=S.photos[i]; if(!p) return;
+  p.el.remove(); S.photos.splice(i,1);
+  const b=cache.get(p.id); if(b){ b.close(); cache.delete(p.id); }
+  if(!S.photos.length){ S.cur=-1; main.tw=0; updateChrome(); syncSliders(); syncLooks(); syncUndo(); return; }
+  S.cur=-1; select(Math.min(i,S.photos.length-1)); updateChrome();
+}
+function updateChrome(){
+  const n=S.photos.length;
+  $('empty').style.display=n?'none':'block'; $('stage').style.display=n?'block':'none';
+  $('exportBtn').disabled=!n; $('applyAll').disabled=n<2; $('resetBtn').disabled=!n;
+  if(!n) $('info').textContent='';
+}
+async function getPreview(p){
+  if(cache.has(p.id)){ const b=cache.get(p.id); cache.delete(p.id); cache.set(p.id,b); return b; }
+  const full=await decodeFile(p.file); p.w=full.width; p.h=full.height;
+  const bmp=await fit(full,2400);
+  if(!S.photos.includes(p)){ bmp.close(); throw new Error('removed'); }
+  if(!p.thumbDone){ const c=p.el.querySelector('canvas'); c.width=240; c.height=Math.round(240*bmp.height/bmp.width);
+    c.getContext('2d').drawImage(bmp,0,0,c.width,c.height); p.thumbDone=true; }
+  cache.set(p.id,bmp);
+  for(const [k,b] of cache){ if(cache.size<=3) break; if(k===cur()?.id||k===p.id) continue; cache.delete(k); b.close(); }
+  return bmp;
+}
+let selTok=0;
+async function select(i){
+  if(i<0||i>=S.photos.length||i===S.cur) return;
+  const tok=++selTok; S.cur=i; const p=S.photos[i];
+  S.photos.forEach((q,j)=>{ q.el.classList.toggle('active',j===i); q.el.setAttribute('aria-current',j===i?'true':'false'); });
+  p.el.scrollIntoView({block:'nearest'});
+  syncSliders(); syncLooks(); syncUndo();
+  const slow=setTimeout(()=>tok===selTok&&busy(true,'Opening '+p.name+'…'),150);
+  try{
+    const bmp=await getPreview(p); if(tok!==selTok) return;
+    main.setImage(bmp); thumbR.setImage(bmp); layout(); drawLookThumbs();
+    $('info').textContent=`${p.name}  ·  ${p.w}×${p.h}  ·  ${i+1} of ${S.photos.length}`;
+  }catch(e){ if(e.message!=='removed'){ markBroken(p,e); toast('Could not open '+p.name+': '+e.message,4000); } }
+  finally{ clearTimeout(slow); if(tok===selTok) busy(false); }
+}
+
+// ================================================================= viewer
+function layout(){
+  if(!main.tw) return;
+  const r=$('viewer').getBoundingClientRect(), padX=28, padY=36;
+  const k=Math.min((r.width-padX*2)/main.tw,(r.height-padY*2)/main.th);
+  const cw=Math.max(1,Math.floor(main.tw*k)), ch=Math.max(1,Math.floor(main.th*k));
+  $('stage').style.width=cw+'px'; $('stage').style.height=ch+'px';
+  const dpr=window.devicePixelRatio||1;
+  S.pw=Math.min(main.tw,Math.round(cw*dpr)); S.ph=Math.round(S.pw*main.th/main.tw);
+  render();
+}
+let raf=0;
+function render(){ if(raf) return; raf=requestAnimationFrame(()=>{ raf=0; const p=cur(); if(!p||!main.tw) return;
+  main.render(p.s,S.pw,S.ph,S.hold?2:(S.split?S.splitPos:-1)); $('divider').style.left=(S.splitPos*100)+'%';
+  $('stage').classList.toggle('hold',S.hold); }); }
+new ResizeObserver(layout).observe($('viewer'));
+
+function setSplitMode(on){ S.split=on; $('splitChk').checked=on; $('stage').classList.toggle('split',on); render(); }
+$('splitChk').onchange=e=>setSplitMode(e.target.checked);
+let dragging=false;
+const setSplit=e=>{ const r=$('stage').getBoundingClientRect(); S.splitPos=Math.min(1,Math.max(0,(e.clientX-r.left)/r.width)); render(); };
+$('stage').addEventListener('pointerdown',e=>{ if(!S.split) return; dragging=true; $('stage').setPointerCapture(e.pointerId); setSplit(e); });
+$('stage').addEventListener('pointermove',e=>{ if(dragging) setSplit(e); });
+$('stage').addEventListener('pointerup',()=>dragging=false);
+
+// ================================================================= keyboard
+addEventListener('keydown',e=>{
+  if(document.querySelector('dialog[open]')) return;
+  const mod=e.metaKey||e.ctrlKey, k=e.key.toLowerCase(), onRange=e.target.type==='range';
+  if(mod&&k==='z'){ e.preventDefault(); e.shiftKey?redo():undo(); return; }
+  if(mod&&k==='y'){ e.preventDefault(); redo(); return; }
+  if(mod&&k==='o'){ e.preventDefault(); openPicker(); return; }
+  if(mod&&k==='e'){ e.preventDefault(); openExport(); return; }
+  if(mod||e.altKey) return;
+  if(k==='b'){ if(!S.hold){ S.hold=true; render(); } }
+  else if(e.key==='\\') setSplitMode(!S.split);
+  else if(e.key==='?') $('helpDlg').showModal();
+  else if(onRange) return;
+  else if(e.key==='ArrowRight'){ e.preventDefault(); select(S.cur+1); }
+  else if(e.key==='ArrowLeft'){ e.preventDefault(); select(S.cur-1); }
+  else if(e.key==='ArrowDown'||e.key==='ArrowUp'){
+    const p=cur(); if(!p) return; e.preventDefault();
+    const i=LOOKS.findIndex(l=>l.id===p.s.look), n=LOOKS.length;
+    const id=LOOKS[(i+(e.key==='ArrowDown'?1:-1)+n)%n].id; selectLook(id); lookEls[id].scrollIntoView({block:'nearest'});
+  }
+  else if((e.key==='Backspace'||e.key==='Delete')&&cur()){ e.preventDefault(); removePhoto(S.cur); }
+});
+addEventListener('keyup',e=>{ if(e.key.toLowerCase()==='b'){ S.hold=false; render(); } });
+addEventListener('blur',()=>{ if(S.hold){ S.hold=false; render(); } });
+
+// ================================================================= files in
+function openPicker(){ $('fileIn').click(); }
+$('openBtn').onclick=$('openBtn2').onclick=openPicker;
+$('fileIn').onchange=e=>{ addFiles(e.target.files); e.target.value=''; };
+let dragDepth=0;
+addEventListener('dragenter',e=>{ if(e.dataTransfer?.types?.includes('Files')){ dragDepth++; $('viewer').classList.add('drag'); } });
+addEventListener('dragleave',()=>{ if(--dragDepth<=0){ dragDepth=0; $('viewer').classList.remove('drag'); } });
+addEventListener('dragover',e=>e.preventDefault());
+addEventListener('drop',e=>{ e.preventDefault(); dragDepth=0; $('viewer').classList.remove('drag'); addFiles(e.dataTransfer.files); });
+// Used by the Mac app for ⌘O, the Dock and "Open With": it serves the chosen files at these URLs.
+window.addRemote=async list=>{
+  busy(true,'Reading photos…');
+  try{ const files=await Promise.all(list.map(async ({url,name,modified})=>new File([await (await fetch(url)).blob()],name,{lastModified:modified})));
+    await addFiles(files); }
+  catch(e){ toast('Could not read those files: '+e.message,4000); }
+  finally{ busy(false); }
+};
+
+$('resetBtn').onclick=()=>{ const p=cur(); if(!p) return; const L=LOOK[p.s.look], fx=L.fx||{};
+  const next={...DEFAULTS,look:p.s.look,grain:fx.grain||0,glow:fx.glow||0,vignette:fx.vignette||0};
+  if(JSON.stringify(next)===JSON.stringify(p.s)) return; snap(p); p.s=next; changed(p); };
+$('applyAll').onclick=()=>{ const p=cur(); if(!p) return;
+  for(const q of S.photos){ if(q===p) continue; q.hist.push({...q.s}); q.fut.length=0; q.s={...p.s}; changed(q); }
+  toast(`Applied “${LOOK[p.s.look].name}” to all ${S.photos.length} photos`); };
+$('undoBtn').onclick=undo; $('redoBtn').onclick=redo;
+$('helpBtn').onclick=()=>$('helpDlg').showModal();
+
+// ================================================================= LUTs
+function ask(title,body,ok){
+  return new Promise(res=>{ const d=$('askDlg'); $('askTitle').textContent=title; $('askBody').textContent=body; $('askOk').textContent=ok;
+    d.returnValue=''; d.showModal(); d.addEventListener('close',()=>res(d.returnValue==='yes'),{once:true}); });
+}
+// Reads a .cube file (3D or 1D). Returns {size, data: Float32Array (r fastest), dmin, dmax}.
+function parseCube(text){
+  let size=0, is1D=false, dmin=0, dmax=1; const v=[];
+  for(const line of text.split(/\r?\n/)){
+    const t=line.trim(); if(!t||t[0]==='#') continue;
+    const k=t.split(/\s+/);
+    if(k[0]==='LUT_3D_SIZE') size=+k[1];
+    else if(k[0]==='LUT_1D_SIZE'){ size=+k[1]; is1D=true; }
+    else if(k[0]==='DOMAIN_MIN') dmin=+k[1];
+    else if(k[0]==='DOMAIN_MAX') dmax=+k[1];
+    else if(/^[-+.\d]/.test(k[0])&&k.length>=3) v.push(+k[0],+k[1],+k[2]);
+  }
+  if(!(size>=2&&size<=129)) throw new Error('this is not a LUT file we can read');
+  if(!(dmax>dmin)) { dmin=0; dmax=1; }
+  if(!is1D){
+    if(v.length!==size*size*size*3) throw new Error('the file looks incomplete');
+    return {size,data:new Float32Array(v),dmin,dmax};
+  }
+  if(v.length!==size*3) throw new Error('the file looks incomplete');
+  const N=33, d=new Float32Array(N*N*N*3);
+  const at=(c,x)=>{ const p=x*(size-1), i=Math.min(size-2,Math.floor(p)), f=p-i; return v[i*3+c]*(1-f)+v[(i+1)*3+c]*f; };
+  let o=0; for(let b=0;b<N;b++) for(let g=0;g<N;g++) for(let r=0;r<N;r++){ d[o++]=at(0,r/(N-1)); d[o++]=at(1,g/(N-1)); d[o++]=at(2,b/(N-1)); }
+  return {size:N,data:d,dmin,dmax};
+}
+const lutName=f=>f.replace(/\.cube$/i,'').replace(/[_]+/g,' ').replace(/\s+/g,' ').trim().slice(0,40)||'My LUT';
+function addLutLook(id,name,text){
+  const L={id,name,group:MY,desc:`Your LUT: ${name}`,p:{},lut:parseCube(text)};
+  LOOKS.push(L); LOOK[id]=L; return L;
+}
+async function importLuts(files){
+  const added=[], bad=[];
+  for(const f of files){
+    const name=lutName(f.name);
+    if(LOOKS.some(l=>l.lut&&l.name===name)){ bad.push(`“${name}” is already added`); continue; }
+    try{ const text=await f.text(), id='lut-'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+      addLutLook(id,name,text); store.luts.push({id,name,text}); added.push(LOOK[id]); }
+    catch(e){ bad.push(`“${name}”: ${e.message}`); }
+  }
+  if(added.length){ store.saveLuts(); buildLooks(); const L=added[added.length-1];
+    if(cur()) selectLook(L.id); lookEls[L.id]?.scrollIntoView({block:'nearest',behavior:'smooth'}); }
+  if(bad.length) toast((added.length?`Added ${added.length} LUT${added.length>1?'s':''}. `:'')+'Skipped '+bad.join('; '),6000);
+  else if(added.length) toast(added.length>1?`Added ${added.length} LUTs to “My LUTs”`:`Added “${added[0].name}” to My LUTs`);
+}
+async function removeLut(id){
+  const L=LOOK[id]; if(!L) return;
+  if(!await ask('Remove this LUT?',`“${L.name}” will be removed from Darkroom. The .cube file on your computer is not deleted.`,'Remove')) return;
+  LOOKS.splice(LOOKS.indexOf(L),1); delete LOOK[id];
+  store.luts=store.luts.filter(x=>x.id!==id); store.saveLuts();
+  for(const r of [main,thumbR,exportR]) r.dropLut(id);
+  for(const p of S.photos){ if(p.s.look===id){ p.s.look='none'; changed(p); } p.hist=p.hist.filter(s=>s.look!==id); p.fut=p.fut.filter(s=>s.look!==id); }
+  buildLooks(); syncUndo(); render();
+}
+$('lutIn').onchange=e=>{ importLuts([...e.target.files]); e.target.value=''; };
+
+// Bakes a look into a 33-point .cube LUT by rendering an identity colour grid through the shader.
+function bakeLut(L,N=33){
+  const w=N*N, h=N, px=new Uint8Array(w*h*4), out=new Uint8Array(w*h*4), gl=exportR.gl;
+  for(let b=0;b<N;b++) for(let g=0;g<N;g++) for(let r=0;r<N;r++){ const i=(g*w+r+N*b)*4;
+    px[i]=Math.round(r/(N-1)*255); px[i+1]=Math.round(g/(N-1)*255); px[i+2]=Math.round(b/(N-1)*255); px[i+3]=255; }
+  exportR.setPixels(w,h,px);
+  exportR.render({...DEFAULTS,look:L.id,strength:1,grain:0,glow:0,vignette:0},w,h);
+  gl.readPixels(0,0,w,h,gl.RGBA,gl.UNSIGNED_BYTE,out);
+  const lines=[`# Created with Darkroom: ${L.desc}`,`TITLE "Darkroom ${L.name}"`,`LUT_3D_SIZE ${N}`,'DOMAIN_MIN 0.0 0.0 0.0','DOMAIN_MAX 1.0 1.0 1.0'];
+  for(let b=0;b<N;b++) for(let g=0;g<N;g++) for(let r=0;r<N;r++){ const i=((h-1-g)*w+r+N*b)*4;
+    lines.push(`${(out[i]/255).toFixed(6)} ${(out[i+1]/255).toFixed(6)} ${(out[i+2]/255).toFixed(6)}`); }
+  return lines.join('\n')+'\n';
+}
+async function saveLooksAsLuts(){
+  const list=LOOKS.filter(l=>l.id!=='none'&&!l.lut);
+  const sink=await makeSink(list.length,'Choose where to save the LUT files'); if(!sink) return;
+  busy(true,'Making LUT files…');
+  try{
+    for(const L of list) await sink.write(`Darkroom ${L.name}.cube`,new Blob([bakeLut(L)],{type:'text/plain'}));
+    toast(`Saved ${list.length} LUT files to “${sink.label}”`,3500); sink.done();
+  }catch(e){ console.error(e); toast('Could not save the LUTs: '+e.message,5000); }
+  finally{ busy(false); }
+}
+$('saveLutsBtn').onclick=saveLooksAsLuts;
+
+// ================================================================= export
+const toB64=blob=>new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.slice(r.result.indexOf(',')+1));r.onerror=rej;r.readAsDataURL(blob);});
+function openExport(){
+  if(!S.photos.length) return;
+  const prefs=store.data.exportPrefs||{size:'0',q:'0.95',exif:true};
+  $('exSize').value=prefs.size; $('exQ').value=prefs.q; $('exExif').checked=prefs.exif;
+  const n=S.photos.length, all=$('exportDlg').querySelector('input[value=all]');
+  $('allLbl').textContent=`All ${n} photos`; all.disabled=n<2; if(n<2) $('exportDlg').querySelector('input[value=current]').checked=true;
+  $('exportDlg').returnValue=''; $('exportDlg').showModal(); $('exGo').focus();
+}
+$('exportBtn').onclick=openExport;
+$('exportDlg').addEventListener('close',()=>{
+  if($('exportDlg').returnValue!=='ok') return;
+  const prefs={size:$('exSize').value,q:$('exQ').value,exif:$('exExif').checked};
+  store.data.exportPrefs=prefs; store.save();
+  const which=$('exportDlg').querySelector('input[name=which]:checked').value;
+  exportPhotos(which==='all'?S.photos.filter(p=>!p.broken):[cur()],prefs);
+});
+async function makeSink(count,message){
+  if(nativeApp){
+    const dir=await nativeApp.postMessage({cmd:'pickFolder',message:message||'Choose where to save your edited photos'}); if(!dir) return null;
+    return {label:dir.split('/').pop(), write:async(name,blob)=>nativeApp.postMessage({cmd:'save',dir,name,data:await toB64(blob)}),
+      done:()=>nativeApp.postMessage({cmd:'reveal',dir})};
+  }
+  if(window.showDirectoryPicker&&count>1){
+    try{ const dir=await showDirectoryPicker({mode:'readwrite'});
+      return {label:dir.name, write:async(name,blob)=>{ let fh,n=1,nm=name;
+        while(true){ try{ await dir.getFileHandle(nm); nm=name.replace(/(\.\w+)$/,`-${++n}$1`); }catch{ break; } }
+        fh=await dir.getFileHandle(nm,{create:true}); const w=await fh.createWritable(); await w.write(blob); await w.close(); }, done(){} }; }
+    catch(e){ if(e.name==='AbortError') return null; }
+  }
+  return {label:'Downloads', write:async(name,blob)=>{ const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; a.click();
+    setTimeout(()=>URL.revokeObjectURL(a.href),5000); await new Promise(r=>setTimeout(r,350)); }, done(){} };
+}
+async function exportPhotos(list,prefs){
+  if(!list.length) return;
+  const sink=await makeSink(list.length); if(!sink) return;
+  const maxSide=Math.min(+prefs.size||Infinity,exportR.max);
+  let done=0; const failed=[];
+  for(const p of list){
+    busy(true,`Exporting ${done+failed.length+1} of ${list.length}…`);
+    try{
+      const bmp=await fit(await decodeFile(p.file),maxSide), w=bmp.width, h=bmp.height;
+      exportR.setImage(bmp); exportR.render(p.s,w,h); bmp.close();
+      let blob=await new Promise(r=>exportR.c.toBlob(r,'image/jpeg',+prefs.q));
+      if(prefs.exif&&!isCR2(p.file)){ const seg=exifSegment(await p.file.arrayBuffer(),w,h); if(seg) blob=await withExif(blob,seg); }
+      const name=p.name.replace(/\.[^.]+$/,'')+'_'+LOOK[p.s.look].name.replace(/\s+/g,'')+'.jpg';
+      await sink.write(name,blob); done++;
+    }catch(e){ console.error(e); failed.push(p.name); }
+  }
+  busy(false);
+  if(failed.length) toast(`Exported ${done}, but ${failed.length} failed: ${failed.slice(0,3).join(', ')}${failed.length>3?'…':''}`,6000);
+  else toast(`Exported ${done} photo${done>1?'s':''} to “${sink.label}”`,3500);
+  if(done) sink.done();
+}
+
+// ================================================================= start
+(async()=>{ await store.load(); await store.loadLuts();
+  for(const x of store.luts){ try{ addLutLook(x.id,x.name,x.text); }catch(e){ console.warn('skipped LUT',x.name,e); } }
+  buildLooks(); updateChrome(); syncSliders(); syncLooks(); syncUndo(); nativeApp?.postMessage({cmd:'ready'}); })();
+window.addFiles=addFiles;
+</script>
+</body>
+</html>
