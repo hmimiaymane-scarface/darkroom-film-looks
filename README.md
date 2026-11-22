@@ -5,6 +5,18 @@ I built it for my Canon 4000D, but it works with any JPG, PNG or Canon CR2.
 
 Everything runs on your computer, on the GPU (WebGL2). No uploads, no account, no tracking.
 
+## Download
+
+**Mac:** [**Download Darkroom for Mac**](https://github.com/hmimiaymane-scarface/darkroom-film-looks/releases/latest/download/Darkroom-1.0.0-mac.zip) (works on Apple silicon and Intel, macOS 12 or later)
+
+1. Unzip it and drag **Darkroom** into your **Applications** folder.
+2. Open it. The first time, macOS says it can't verify the developer (the app isn't registered with Apple's paid program).
+   Click **Done**, then go to **System Settings → Privacy & Security**, scroll down and click **Open Anyway**.
+   You only need to do this once.
+
+**Windows / Linux / any computer:** download [`darkroom.html`](https://github.com/hmimiaymane-scarface/darkroom-film-looks/releases/latest/download/darkroom.html)
+and open it in Chrome or Edge. It's the same editor in a single file.
+
 ## Looks (38 built in)
 
 | Group | Looks |
