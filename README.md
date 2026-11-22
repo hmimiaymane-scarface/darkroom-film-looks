@@ -1,22 +1,22 @@
 # Darkroom
 
-A small, private photo-grading app with film looks: Fujifilm-inspired and Hollywood-inspired.
+A small, private photo editor with film looks (Fujifilm-, Kodak- and Hollywood-inspired) and the editing tools to make them your own.
 I built it for my Canon 4000D, but it works with any JPG, PNG or Canon CR2.
 
 Everything runs on your computer, on the GPU (WebGL2). No uploads, no account, no tracking.
 
 ## Download
 
-**Mac:** [**Download Darkroom for Mac**](https://github.com/hmimiaymane-scarface/darkroom-film-looks/releases/latest/download/Darkroom-1.0.0-mac.zip) (works on Apple silicon and Intel, macOS 12 or later)
+**Mac:** [**Download Darkroom for Mac**](https://github.com/hmimiaymane-scarface/darkroom-film-looks/releases/latest/download/Darkroom-mac.zip) (works on Apple silicon and Intel, macOS 12 or later)
 
 1. Unzip it and drag **Darkroom** into your **Applications** folder.
 2. Open it. The first time, macOS says it can't verify the developer (the app isn't registered with Apple's paid program).
    Click **Done**, then go to **System Settings → Privacy & Security**, scroll down and click **Open Anyway**.
    You only need to do this once.
 
-**Windows:** [**Download Darkroom for Windows**](https://github.com/hmimiaymane-scarface/darkroom-film-looks/releases/latest/download/Darkroom-Setup-1.0.0.exe) (Windows 10 and 11)
+**Windows:** [**Download Darkroom for Windows**](https://github.com/hmimiaymane-scarface/darkroom-film-looks/releases/latest/download/Darkroom-Windows-Setup.exe) (Windows 10 and 11)
 
-1. Run **Darkroom-Setup-1.0.0.exe**. It installs in a few seconds (no admin rights needed) and adds Darkroom to your Start menu and desktop.
+1. Run **Darkroom-Windows-Setup.exe**. It installs in a few seconds (no admin rights needed) and adds Darkroom to your Start menu and desktop.
 2. If Windows shows **"Windows protected your PC"** (it does this for new apps that aren't commercially code-signed), click **More info → Run anyway**. Only needed once.
 
 **Linux / any computer:** download [`darkroom.html`](https://github.com/hmimiaymane-scarface/darkroom-film-looks/releases/latest/download/darkroom.html)
@@ -36,21 +36,41 @@ Hover over any look in the app to see what inspired it (e.g. *Portrait 400: insp
 These looks are original approximations, *inspired by* well-known film stocks and movie grades.
 They are not affiliated with or endorsed by Fujifilm, Kodak or any studio.
 
+## Editing
+
+Pick a look in the **Looks** tab, then fine-tune it in the **Edit** tab:
+
+| Section | What you get |
+|---|---|
+| **Crop & Rotate** | Crop with Original, Free, 1:1, 4:5, 3:2 and 16:9 frames, rotate 90°, flip, and straighten (auto-crops so no empty corners) |
+| **Light** | Exposure, Contrast, Highlights, Shadows, Whites, Blacks |
+| **Color** | White balance picker (click something grey), Warmth, Tint, Saturation |
+| **Color Mixer** | Hue, saturation and luminance for 8 colours, plus a picker: click a colour in the photo to adjust it |
+| **Curves** | RGB and per-channel tone curves over a histogram |
+| **Color Grading** | Shadows / midtones / highlights colour wheels with brightness |
+| **Effects** | Clarity, Sharpen, Film grain, Halation glow, Vignette |
+
+Everything is non-destructive, with undo/redo, and your edits are remembered per photo.
+
+## My Looks
+
+- **Save as My Look** (Edit tab) saves the current look with all your edits, so you can apply it to any photo in one click.
+- **Share it:** hover over your look and click **⤓** to save a small `.darkroom` file. Anyone can drop it into Darkroom to use it.
+- **Community looks:** ready-made looks from Darkroom users live in [`community-looks/`](community-looks). Add yours: see [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ## LUTs
 
-**Use any LUT:** click **+ Add LUT** under *My LUTs* (or drag a `.cube` file onto the window).
-It appears next to the built-in looks, and the strength, grain, glow and vignette sliders work on top of it.
-Your LUTs are remembered. Remove one with the × on its tile (the file on your computer is not touched).
+**Use any LUT:** click **Import LUT or look** under *My Looks* (or drag a `.cube` file onto the window).
+It appears next to the built-in looks, and every Edit tool works on top of it.
+Remove one with the × on its tile (the file on your computer is not touched).
 
-**Take the looks elsewhere:** click **Save looks as LUT files** to get every built-in look as a `.cube`
-file for Lightroom, Photoshop, VSCO, Capture One and other editors. (Grain, glow and vignette can't be
-stored in a LUT, so those stay in Darkroom.)
+**Take your colour elsewhere:** **Save looks as LUT files** exports every built-in look as a `.cube`, and
+**Export as LUT** (Edit tab) saves your own edit as one, for Lightroom, Photoshop, DaVinci Resolve, VSCO and more.
+Crop, clarity, sharpen, grain, glow and vignette can't be stored in a LUT, so those stay in Darkroom.
 
-## Features
+## Also
 
-- Live preview with look **strength**, exposure, contrast, warmth, tint, saturation, **film grain**, **halation glow** and vignette
 - Before/after split (`\`) and hold `B` to see the original
-- Undo / redo, plus per-photo edits that are **remembered** when you reopen a photo
 - Batch export to full size, 3840, 2048 or 1080 px, **keeping camera EXIF** (date, lens, settings)
 - Canon **CR2**: uses the full-size JPEG the camera embeds in the RAW file (not a true RAW develop)
 
@@ -84,6 +104,7 @@ Flat files give the looks more room to work.
 
 ```
 darkroom.html      the whole app: UI, WebGL shader, looks, export
+community-looks/   shared .darkroom looks
 mac/main.swift     native macOS shell (WKWebView, menus, file open/save)
 mac/Info.plist     app bundle metadata
 mac/icon.swift     draws the app icon

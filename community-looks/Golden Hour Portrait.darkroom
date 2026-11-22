@@ -1,0 +1,21 @@
+{
+  "darkroom": 1,
+  "kind": "look",
+  "name": "Golden Hour Portrait",
+  "author": "hmimiaymane-scarface",
+  "base": "portra400",
+  "baseName": "Portrait 400",
+  "settings": {
+    "strength": 1,
+    "highlights": -0.25,
+    "shadows": 0.2,
+    "warmth": 0.15,
+    "mixH": [0, -0.15, 0, 0, 0, 0, 0, 0],
+    "mixS": [0, -0.1, 0, -0.3, 0, -0.2, 0, 0],
+    "mixL": [0, 0.15, 0, 0, 0, 0, 0, 0],
+    "curves": { "rgb": [[0, 0.04], [0.5, 0.52], [1, 0.97]], "r": [[0, 0], [1, 1]], "g": [[0, 0], [1, 1]], "b": [[0, 0], [1, 1]] },
+    "wheels": { "sh": [0, 0, 0], "mid": [0, 0, 0], "hi": [0.5, 0.35, 0.1] },
+    "glow": 0.15,
+    "grain": 0.12
+  }
+}

@@ -14,13 +14,15 @@
 html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
   font:13px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,sans-serif;overflow:hidden;
   -webkit-user-select:none;user-select:none}
-button,select{font:inherit;color:var(--text);background:var(--panel2);border:1px solid var(--line);
+button,select,input[type=text]{font:inherit;color:var(--text);background:var(--panel2);border:1px solid var(--line);
   border-radius:8px;padding:7px 12px;cursor:pointer}
+input[type=text]{cursor:text;width:100%;-webkit-user-select:text;user-select:text}
 button:hover:not(:disabled),select:hover{border-color:var(--line2)}
 button.primary{background:var(--accent);color:#1a1206;border-color:var(--accent);font-weight:600}
 button.primary:hover:not(:disabled){background:var(--accent2)}
 button.ghost{background:transparent;border-color:transparent;color:var(--dim)}
 button.ghost:hover:not(:disabled){color:var(--text);background:var(--panel2)}
+button.on{border-color:var(--accent);color:var(--accent)}
 button:disabled{opacity:.35;cursor:default}
 :focus{outline:none}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
@@ -36,7 +38,7 @@ header{height:52px;display:flex;align-items:center;gap:8px;padding:0 14px;border
 .toggle:hover{color:var(--text)}
 .toggle input{accent-color:var(--accent);margin:0}
 
-main{display:grid;grid-template-columns:136px 1fr 320px;height:calc(100% - 52px)}
+main{display:grid;grid-template-columns:136px 1fr 328px;height:calc(100% - 52px)}
 
 /* filmstrip */
 #strip{border-right:1px solid var(--line);overflow-y:auto;padding:10px 8px;background:var(--panel)}
@@ -57,6 +59,7 @@ main{display:grid;grid-template-columns:136px 1fr 320px;height:calc(100% - 52px)
 #viewer{position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#09090a}
 #stage{position:relative;display:none;box-shadow:0 12px 48px rgba(0,0,0,.6);touch-action:none}
 #stage canvas{display:block;width:100%;height:100%}
+#stage.picking{cursor:crosshair}
 #divider{position:absolute;top:0;bottom:0;width:2px;margin-left:-1px;background:#fff;display:none;pointer-events:none;box-shadow:0 0 6px rgba(0,0,0,.6)}
 #divider::after{content:"⇆";position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:28px;height:28px;border-radius:50%;
   background:#fff;color:#111;display:flex;align-items:center;justify-content:center;font-size:14px;box-shadow:0 2px 8px rgba(0,0,0,.5)}
@@ -71,55 +74,98 @@ main{display:grid;grid-template-columns:136px 1fr 320px;height:calc(100% - 52px)
 #empty .tip{margin-top:22px;font-size:12px;color:var(--faint)}
 #empty button{margin-top:18px}
 #viewer.drag #empty{border-color:var(--accent);background:rgba(240,166,74,.05)}
-#viewer.drag::after{content:"Drop to add photos or LUTs";position:absolute;inset:12px;border:2px dashed var(--accent);border-radius:14px;
+#viewer.drag::after{content:"Drop to add photos, LUTs or looks";position:absolute;inset:12px;border:2px dashed var(--accent);border-radius:14px;
   display:flex;align-items:center;justify-content:center;font-size:16px;background:rgba(9,9,10,.75)}
 #busy{position:absolute;top:14px;left:50%;transform:translateX(-50%);display:none;align-items:center;gap:10px;
-  background:rgba(22,22,26,.92);border:1px solid var(--line2);padding:8px 14px;border-radius:999px;font-size:12px}
+  background:rgba(22,22,26,.92);border:1px solid var(--line2);padding:8px 14px;border-radius:999px;font-size:12px;z-index:5}
 #busy.on{display:flex}
 .spin{width:14px;height:14px;border:2px solid #555;border-top-color:var(--accent);border-radius:50%;animation:s 1s linear infinite}
 @keyframes s{to{transform:rotate(360deg)}}
 
+/* crop overlay */
+#cropLayer{position:absolute;inset:0;display:none;overflow:hidden}
+#stage.cropping #cropLayer{display:block}
+#cropBox{position:absolute;box-shadow:0 0 0 9999px rgba(0,0,0,.6);outline:1px solid rgba(255,255,255,.9);cursor:move;
+  background:linear-gradient(rgba(255,255,255,.35),rgba(255,255,255,.35)) 33.33% 0/1px 100% no-repeat,
+    linear-gradient(rgba(255,255,255,.35),rgba(255,255,255,.35)) 66.66% 0/1px 100% no-repeat,
+    linear-gradient(rgba(255,255,255,.35),rgba(255,255,255,.35)) 0 33.33%/100% 1px no-repeat,
+    linear-gradient(rgba(255,255,255,.35),rgba(255,255,255,.35)) 0 66.66%/100% 1px no-repeat}
+#cropBox i{position:absolute;width:16px;height:16px;margin:-8px 0 0 -8px;border:2px solid #fff;background:rgba(0,0,0,.35);border-radius:3px}
+#cropBox i[data-h=nw]{left:0;top:0;cursor:nwse-resize}#cropBox i[data-h=ne]{left:100%;top:0;cursor:nesw-resize}
+#cropBox i[data-h=sw]{left:0;top:100%;cursor:nesw-resize}#cropBox i[data-h=se]{left:100%;top:100%;cursor:nwse-resize}
+#cropBox i[data-h=n]{left:50%;top:0;cursor:ns-resize}#cropBox i[data-h=s]{left:50%;top:100%;cursor:ns-resize}
+#cropBox i[data-h=w]{left:0;top:50%;cursor:ew-resize}#cropBox i[data-h=e]{left:100%;top:50%;cursor:ew-resize}
+
 /* side panel */
 #panel{border-left:1px solid var(--line);background:var(--panel);display:flex;flex-direction:column;min-height:0}
+.tabs{display:flex;gap:4px;padding:10px 12px 0;border-bottom:1px solid var(--line)}
+.tabs button{flex:1;border:none;border-bottom:2px solid transparent;border-radius:0;background:none;color:var(--dim);padding:8px;font-weight:600}
+.tabs button[aria-selected=true]{color:var(--text);border-bottom-color:var(--accent)}
+.pane{flex:1 1 auto;overflow-y:auto;min-height:0}
+.pane[hidden]{display:none}
 .sec{padding:14px}
-.sec h3{margin:0 0 10px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);font-weight:600}
-#looksSec{flex:1 1 auto;overflow-y:auto;min-height:160px;border-bottom:1px solid var(--line)}
-#adjSec{flex:0 1 auto;overflow-y:auto;max-height:60%}
 .grp{font-size:11px;color:var(--accent);margin:14px 0 6px;font-weight:600;scroll-margin-top:84px}
 .chips{display:flex;flex-wrap:wrap;gap:5px;margin:0 0 10px;position:sticky;top:-14px;z-index:2;background:var(--panel);padding:6px 0}
-.chips button{padding:3px 9px;border-radius:999px;font-size:11px;color:var(--dim)}
+.chips button,.pill{padding:3px 9px;border-radius:999px;font-size:11px;color:var(--dim)}
 .chips button:hover{color:var(--text)}
-.grp:first-of-type{margin-top:0}
 .looks{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
-.look{cursor:pointer;border-radius:7px;padding:3px;border:2px solid transparent;background:var(--panel2);text-align:left;color:var(--text)}
+.look{position:relative;cursor:pointer;border-radius:7px;padding:3px;border:2px solid transparent;background:var(--panel2);text-align:left;color:var(--text)}
 .look:hover{border-color:var(--line2)}
 .look[aria-pressed="true"]{border-color:var(--accent)}
 .look canvas{width:100%;aspect-ratio:1/1;object-fit:cover;display:block;border-radius:4px;background:#2a2a2f}
 .look span{display:block;font-size:10.5px;padding:4px 2px 1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.look{position:relative}
 .look.add{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;border:2px dashed var(--line2);
   background:transparent;color:var(--dim);aspect-ratio:1/1.18;padding:6px;text-align:center}
 .look.add b{font-size:22px;line-height:1;color:var(--accent);font-weight:400}
 .look.add span{font-size:10.5px;padding:0;white-space:normal}
 .look.add:hover{border-color:var(--accent);color:var(--text)}
-.look .rmL{position:absolute;top:6px;right:6px;width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,.75);color:#fff;
-  font-size:12px;line-height:18px;text-align:center;opacity:0;transition:opacity .15s}
-.look:hover .rmL,.look:focus-visible .rmL{opacity:1}
-.look .rmL:hover{background:var(--danger)}
+.look .act{position:absolute;top:6px;right:6px;display:flex;gap:3px;opacity:0;transition:opacity .15s}
+.look:hover .act,.look:focus-visible .act{opacity:1}
+.look .act i{width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,.75);color:#fff;font-size:11px;line-height:18px;text-align:center;font-style:normal}
+.look .act i:hover{background:var(--accent);color:#000}
+.look .act i.x:hover{background:var(--danger)}
 .lutHint{font-size:11px;color:var(--faint);margin:6px 0 0}
 .lookFoot{margin-top:16px;padding-top:12px;border-top:1px solid var(--line)}
 .lookFoot button{width:100%;text-align:left;display:flex;flex-direction:column;gap:1px;padding:9px 12px}
 .lookFoot small{color:var(--faint);font-size:11px}
-#lookDesc{font-size:11.5px;color:var(--dim);margin:-2px 0 10px;min-height:16px}
-.sg{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);margin:12px 0 6px}
-.sg:first-child{margin-top:0}
-.sl{margin-bottom:8px}
-.sl label{display:flex;justify-content:space-between;color:var(--dim);font-size:12px;margin-bottom:2px}
+#lookDesc{font-size:11.5px;color:var(--dim);margin:6px 0 10px;min-height:16px}
+.sl{margin-bottom:7px}
+.sl label{display:flex;justify-content:space-between;color:var(--dim);font-size:12px;margin-bottom:1px}
 .sl label output{color:var(--text);font-variant-numeric:tabular-nums}
 .sl.changed label{color:var(--text)}
 .sl input{width:100%;accent-color:var(--accent);margin:2px 0}
-.row{display:flex;gap:8px;margin-top:12px}
-.row button{flex:1}
+.row{display:flex;gap:8px;margin-top:10px}
+.row button{flex:1;padding:7px 6px}
+.hint{font-size:11px;color:var(--faint);margin:4px 0 8px}
+
+/* edit tab */
+.edTop{display:flex;gap:8px;padding:12px 14px;border-bottom:1px solid var(--line)}
+.edTop button{flex:1;padding:7px 6px}
+details{border-bottom:1px solid var(--line)}
+summary{list-style:none;display:flex;align-items:center;gap:8px;padding:11px 14px;cursor:pointer;font-weight:600;font-size:12.5px}
+summary::-webkit-details-marker{display:none}
+summary::before{content:"›";color:var(--faint);transition:transform .15s;display:inline-block;width:8px}
+details[open]>summary::before{transform:rotate(90deg)}
+summary .dot{width:6px;height:6px;border-radius:50%;background:var(--accent);visibility:hidden}
+details.changed summary .dot{visibility:visible}
+summary .rs{margin-left:auto;padding:2px 8px;font-size:11px;font-weight:400;border-radius:6px;color:var(--dim);visibility:hidden}
+details.changed summary .rs{visibility:visible}
+.body{padding:0 14px 14px}
+.pills{display:flex;flex-wrap:wrap;gap:5px;margin:8px 0}
+.pill.on{border-color:var(--accent);color:var(--accent)}
+.bands{display:flex;justify-content:space-between;margin:4px 0 10px}
+.bands button{width:28px;height:28px;border-radius:50%;padding:0;border:2px solid transparent;position:relative}
+.bands button.on{border-color:#fff;box-shadow:0 0 0 2px var(--panel) inset}
+.bands button.mod::after{content:"";position:absolute;left:50%;bottom:-7px;width:4px;height:4px;margin-left:-2px;border-radius:50%;background:var(--accent)}
+#curveCv{width:100%;aspect-ratio:1/1;display:block;border-radius:6px;background:#121215;touch-action:none;cursor:crosshair}
+.wheels{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.wheel{text-align:center}
+.wheel canvas{width:100%;aspect-ratio:1/1;display:block;touch-action:none;cursor:pointer}
+.wheel .wl{font-size:11px;color:var(--dim);margin:4px 0 2px}
+.wheel .sl label{justify-content:center}
+.wheel .sl label output{display:none}
+.wide{width:100%}
+.pickBtn{width:100%;margin-bottom:8px}
 
 /* dialogs & toast */
 dialog{background:var(--panel);color:var(--text);border:1px solid var(--line2);border-radius:14px;padding:22px;width:400px;
@@ -146,7 +192,7 @@ dialog h2{margin:0 0 16px;font-size:17px;font-weight:600}
 <header>
   <div class="logo">DARK<span>ROOM</span></div>
   <button id="openBtn" title="Add photos (⌘O)">+ Add photos</button>
-  <input type="file" id="fileIn" multiple accept=".jpg,.jpeg,.png,.webp,.cr2,image/jpeg,image/png,image/webp" hidden>
+  <input type="file" id="fileIn" multiple accept=".jpg,.jpeg,.png,.webp,.cr2,.cube,.darkroom,image/jpeg,image/png,image/webp" hidden>
   <div class="spacer"></div>
   <div class="seg">
     <button class="ghost" id="undoBtn" title="Undo (⌘Z)" aria-label="Undo" disabled>↶</button>
@@ -167,6 +213,7 @@ dialog h2{margin:0 0 16px;font-size:17px;font-weight:600}
     </div>
     <div id="stage">
       <canvas id="view" aria-label="Edited photo"></canvas>
+      <div id="cropLayer"><div id="cropBox"><i data-h="nw"></i><i data-h="n"></i><i data-h="ne"></i><i data-h="e"></i><i data-h="se"></i><i data-h="s"></i><i data-h="sw"></i><i data-h="w"></i></div></div>
       <div id="divider"></div>
       <div class="tag l">Before</div><div class="tag r">After</div>
     </div>
@@ -174,14 +221,59 @@ dialog h2{margin:0 0 16px;font-size:17px;font-weight:600}
     <div id="busy" role="status"><div class="spin"></div><span id="busyTxt">Loading…</span></div>
   </section>
   <aside id="panel">
-    <div class="sec" id="looksSec"><h3>Looks</h3><div id="lookDesc"></div><div id="looks"></div>
-      <div class="lookFoot"><button id="saveLutsBtn">Save looks as LUT files<small>Use them in Lightroom, Photoshop, VSCO and more</small></button></div>
+    <div class="tabs" role="tablist">
+      <button role="tab" id="tabLooks" aria-selected="true" aria-controls="paneLooks">Looks</button>
+      <button role="tab" id="tabEdit" aria-selected="false" aria-controls="paneEdit">Edit</button>
     </div>
-    <input type="file" id="lutIn" multiple accept=".cube" hidden>
-    <div class="sec" id="adjSec"><h3>Adjust</h3><div id="sliders"></div>
-      <div class="row"><button id="resetBtn" title="Reset adjustments for this photo">Reset</button>
-        <button id="applyAll" title="Copy this photo's look and adjustments to every photo">Apply to all</button></div>
+    <div class="pane" id="paneLooks" role="tabpanel">
+      <div class="sec">
+        <div id="strengthBox"></div>
+        <div id="lookDesc"></div>
+        <div id="looks"></div>
+        <div class="lookFoot"><button id="saveLutsBtn">Save looks as LUT files<small>Use them in Lightroom, Photoshop, VSCO and more</small></button></div>
+      </div>
     </div>
+    <div class="pane" id="paneEdit" role="tabpanel" hidden>
+      <div class="edTop">
+        <button id="saveLookBtn" class="primary" title="Save this look with all your edits so you can reuse it">Save as My Look</button>
+        <button id="cubeBtn" title="Save the colour of this edit as a .cube LUT">Export as LUT</button>
+      </div>
+      <details id="secCrop" data-sec="crop"><summary>Crop &amp; Rotate<i class="dot"></i><button class="rs">Reset</button></summary><div class="body">
+        <button id="cropBtn" class="wide">Crop photo</button>
+        <div class="pills" id="aspects"></div>
+        <div class="row" style="margin-top:4px">
+          <button id="rotL" title="Rotate left">⟲ 90°</button><button id="rotR" title="Rotate right">⟳ 90°</button>
+          <button id="flipH" title="Flip horizontally">⇋</button><button id="flipV" title="Flip vertically">⇵</button>
+        </div>
+        <div id="straightBox" style="margin-top:12px"></div>
+      </div></details>
+      <details id="secLight" data-sec="light" open><summary>Light<i class="dot"></i><button class="rs">Reset</button></summary><div class="body" id="lightBox"></div></details>
+      <details id="secColor" data-sec="color" open><summary>Color<i class="dot"></i><button class="rs">Reset</button></summary><div class="body">
+        <button class="pickBtn" id="wbPick" title="Click something white or grey in the photo to fix the colour cast">⌖ Pick white balance</button>
+        <div id="colorBox"></div>
+      </div></details>
+      <details id="secMixer" data-sec="mixer"><summary>Color Mixer<i class="dot"></i><button class="rs">Reset</button></summary><div class="body">
+        <div class="hint">Change one colour without touching the others.</div>
+        <div class="bands" id="bands"></div>
+        <button class="pickBtn" id="mixPick">⌖ Pick a colour in the photo</button>
+        <div id="mixBox"></div>
+      </div></details>
+      <details id="secCurves" data-sec="curves"><summary>Curves<i class="dot"></i><button class="rs">Reset</button></summary><div class="body">
+        <div class="pills" id="curveCh"></div>
+        <canvas id="curveCv" width="580" height="580" aria-label="Tone curve editor"></canvas>
+        <div class="hint">Click to add a point · drag to move · double-click a point to remove it.</div>
+      </div></details>
+      <details id="secGrading" data-sec="grading"><summary>Color Grading<i class="dot"></i><button class="rs">Reset</button></summary><div class="body">
+        <div class="hint">Drag a puck to tint shadows, midtones or highlights. Double-click to reset.</div>
+        <div class="wheels" id="wheels"></div>
+      </div></details>
+      <details id="secEffects" data-sec="effects" open><summary>Effects<i class="dot"></i><button class="rs">Reset</button></summary><div class="body" id="fxBox"></div></details>
+      <div class="sec">
+        <div class="row" style="margin-top:0"><button id="resetBtn" title="Reset every edit on this photo (keeps the crop)">Reset all</button>
+          <button id="applyAll" title="Copy this photo's look and edits (not the crop) to every photo">Apply to all photos</button></div>
+      </div>
+    </div>
+    <input type="file" id="lutIn" multiple accept=".cube,.darkroom" hidden>
   </aside>
 </main>
 
@@ -215,15 +307,17 @@ dialog h2{margin:0 0 16px;font-size:17px;font-weight:600}
   <form method="dialog">
     <h2>Keyboard shortcuts</h2>
     <div class="keys">
-      <span><kbd>⌘</kbd> <kbd>O</kbd></span><span>Add photos</span>
+      <span><kbd>⌘</kbd> <kbd>O</kbd></span><span>Add photos, LUTs or looks</span>
       <span><kbd>⌘</kbd> <kbd>E</kbd></span><span>Export</span>
       <span><kbd>⌘</kbd> <kbd>Z</kbd> / <kbd>⇧</kbd><kbd>⌘</kbd><kbd>Z</kbd></span><span>Undo / Redo</span>
       <span><kbd>←</kbd> <kbd>→</kbd></span><span>Previous / next photo</span>
       <span><kbd>↑</kbd> <kbd>↓</kbd></span><span>Previous / next look</span>
+      <span><kbd>C</kbd></span><span>Crop (press again or <kbd>Enter</kbd> when done)</span>
       <span><kbd>B</kbd> (hold)</span><span>Show the original</span>
       <span><kbd>\</kbd></span><span>Before / After split</span>
+      <span><kbd>Esc</kbd></span><span>Leave crop or cancel a colour picker</span>
       <span><kbd>⌫</kbd></span><span>Remove photo from the list (your file is not deleted)</span>
-      <span>Double-click</span><span>Reset a slider</span>
+      <span>Double-click</span><span>Reset a slider, wheel or curve point</span>
     </div>
     <div class="actions"><button value="close" class="primary">Done</button></div>
   </form>
@@ -232,6 +326,14 @@ dialog h2{margin:0 0 16px;font-size:17px;font-weight:600}
   <form method="dialog">
     <h2 id="askTitle"></h2><div id="askBody" style="color:var(--dim)"></div>
     <div class="actions"><button value="no">Cancel</button><button value="yes" class="primary" id="askOk"></button></div>
+  </form>
+</dialog>
+<dialog id="nameDlg">
+  <form method="dialog">
+    <h2>Save as My Look</h2>
+    <div class="field"><label class="lbl" for="nameIn">Name</label><input type="text" id="nameIn" maxlength="40" autocomplete="off"></div>
+    <div class="hint" id="nameHint">Saves the look with your colour, light, curve and effect edits (not the crop or exposure). It appears under My Looks.</div>
+    <div class="actions"><button value="cancel">Cancel</button><button value="update" id="nameUpd" hidden></button><button value="new" class="primary" id="nameNew">Save</button></div>
   </form>
 </dialog>
 <div id="toast" role="status" aria-live="polite"></div>
@@ -243,19 +345,30 @@ const VS = `#version 300 es
 in vec2 p; out vec2 vUv;
 void main(){ vUv = vec2((p.x+1.0)*0.5, (1.0-p.y)*0.5); gl_Position = vec4(p,0.0,1.0); }`;
 
+// Pipeline: geometry → white balance & exposure → light (highlights/shadows…) → look (or LUT) at its strength
+// → your colour edits (contrast, saturation, mixer, wheels, curves) → detail (clarity, sharpen) → film effects.
 const FS = `#version 300 es
 precision highp float;
 precision highp sampler3D;
 in vec2 vUv; out vec4 o;
 uniform sampler2D uImg; uniform vec2 uTexSize;
+uniform mat3 uGeo; uniform vec2 uOutSize; uniform float uOOB;
 uniform sampler3D uLut; uniform float uUseLut, uLutSize; uniform vec2 uLutDomain;
 uniform float uExposure, uWarm, uTint;
+uniform float uHi, uSh, uWh, uBl;
 uniform mat3 uMix;
 uniform float uSat, uContrast, uFade, uBW; uniform vec3 uBWW;
 uniform vec3 uShadow, uHigh, uLift, uGamma, uGain;
 uniform float uHS[6]; uniform float uHH[6]; uniform float uHL[6];
-uniform float uStrength, uGrain, uGlow, uVignette, uSplit;
+uniform float uStrength;
+uniform float uUCon, uUSat;
+uniform float uMixOn; uniform float uMH[8]; uniform float uMS[8]; uniform float uML[8];
+uniform vec3 uWS, uWM, uWH, uWL;
+uniform sampler2D uCurve; uniform float uCurveOn;
+uniform float uClarity, uSharpen;
+uniform float uGrain, uGlow, uVignette, uSplit;
 const vec3 LW = vec3(0.2126,0.7152,0.0722);
+const float MC[9] = float[9](0.0, 30.0/360.0, 60.0/360.0, 120.0/360.0, 180.0/360.0, 240.0/360.0, 275.0/360.0, 315.0/360.0, 1.0);
 
 vec3 toLin(vec3 c){ return mix(c/12.92, pow((c+0.055)/1.055, vec3(2.4)), step(0.04045,c)); }
 vec3 toSrgb(vec3 c){ c=max(c,0.0); return mix(c*12.92, 1.055*pow(c,vec3(1.0/2.4))-0.055, step(0.0031308,c)); }
@@ -275,28 +388,45 @@ float band(float a[6], float h){
   float p=clamp(h,0.0,1.0)*6.0; int i=int(floor(p))%6; int j=(i+1)%6;
   return mix(a[i],a[j],fract(p));
 }
+// 8 colour-mixer bands: red, orange, yellow, green, aqua, blue, purple, magenta
+float mband(float a[8], float h){
+  for(int i=0;i<8;i++){
+    if(h<MC[i+1]||i==7){ float f=clamp((h-MC[i])/(MC[i+1]-MC[i]),0.0,1.0); return mix(a[i],a[(i+1)%8],f); }
+  }
+  return a[0];
+}
+float luma(vec3 c){ return dot(c,LW); }
 float hash(vec2 p){ p=fract(p*vec2(123.34,456.21)); p+=dot(p,p+45.32); return fract(p.x*p.y); }
 float vnoise(vec2 p){
   vec2 i=floor(p), f=fract(p); f=f*f*(3.-2.*f);
   float a=hash(i), b=hash(i+vec2(1,0)), c=hash(i+vec2(0,1)), d=hash(i+vec2(1,1));
   return mix(mix(a,b,f.x),mix(c,d,f.x),f.y);
 }
+vec3 light(vec3 c){
+  float l=luma(clamp(c,0.,1.));
+  float sm=pow(1.-l,2.)-pow(1.-l,6.), hm=pow(l,2.)-pow(l,6.);
+  return c + 0.55*(uSh*sm+uHi*hm) + 0.3*uWh*pow(l,3.) + 0.25*uBl*pow(1.-l,3.);
+}
 void main(){
   vec2 uv=vUv;
-  vec3 src=texture(uImg,uv).rgb;
-  vec3 wb=vec3(1.0+0.12*uWarm+0.04*uTint, 1.0-0.08*uTint, 1.0-0.12*uWarm+0.04*uTint);
+  vec2 su=(uGeo*vec3(uv,1.0)).xy;
+  bool oob=any(lessThan(su,vec2(-0.001)))||any(greaterThan(su,vec2(1.001)));
+  su=clamp(su,0.0,1.0);
+  vec3 src=texture(uImg,su).rgb;
+  vec3 wb=exp2(vec3(0.6*uWarm+0.2*uTint, -0.4*uTint, -0.6*uWarm+0.2*uTint)); // white balance in stops
   vec3 lin=toLin(src)*exp2(uExposure)*wb;
 
   if(uGlow>0.0){
     float lod=log2(max(uTexSize.x,uTexSize.y)/90.0);
     vec2 px=exp2(lod)/uTexSize*1.5;
-    vec3 b=textureLod(uImg,uv,lod).rgb
-      +textureLod(uImg,uv+vec2(px.x,0),lod).rgb+textureLod(uImg,uv-vec2(px.x,0),lod).rgb
-      +textureLod(uImg,uv+vec2(0,px.y),lod).rgb+textureLod(uImg,uv-vec2(0,px.y),lod).rgb;
+    vec3 b=textureLod(uImg,su,lod).rgb
+      +textureLod(uImg,su+vec2(px.x,0),lod).rgb+textureLod(uImg,su-vec2(px.x,0),lod).rgb
+      +textureLod(uImg,su+vec2(0,px.y),lod).rgb+textureLod(uImg,su-vec2(0,px.y),lod).rgb;
     b=toLin(b/5.0)*exp2(uExposure)*wb;
     lin+=max(b-0.4,0.0)*vec3(1.0,0.5,0.32)*uGlow*1.6;
   }
-  vec3 base=toSrgb(lin);
+  vec3 base=light(toSrgb(lin));
+  lin=toLin(max(base,0.0));
 
   vec3 g=toSrgb(uMix*lin);
   if(uUseLut>0.5){
@@ -309,30 +439,66 @@ void main(){
   h.y=clamp(h.y*band(uHS,h.x),0.,1.);
   h.z*=1.0+band(uHL,h.x)*s;
   g=hsv2rgb(h);
-  float l=dot(g,LW);
+  float l=luma(g);
   g=mix(vec3(l),g,uSat);
   if(uBW>0.5){ g=vec3(dot(max(g,0.0),uBWW)); }
   g=clamp(g,0.,1.);
   g=mix(g,g*g*(3.-2.*g),uContrast);
-  l=dot(clamp(g,0.,1.),LW);
+  l=luma(clamp(g,0.,1.));
   g+=uShadow*pow(1.-l,2.0)+uHigh*pow(l,2.0);
   g=clamp(g,0.,1.);
   g=uGain*(g+uLift*(1.-g));
   g=pow(max(g,0.),1.0/uGamma);
   g=uFade+g*(1.0-uFade*1.3);
-  vec3 c=mix(base,clamp(g,0.,1.),uStrength);
+  vec3 c=mix(clamp(base,0.,1.),clamp(g,0.,1.),uStrength);
 
-  float asp=uTexSize.x/uTexSize.y;
+  // ---- your colour edits
+  c=clamp(c,0.,1.);
+  c=mix(c,c*c*(3.-2.*c),uUCon);
+  c=mix(vec3(luma(c)),c,uUSat);
+  if(uMixOn>0.5){
+    vec3 m=rgb2hsv(clamp(c,0.,1.)); float ms=m.y;
+    float dh=mband(uMH,m.x), ds=mband(uMS,m.x), dl=mband(uML,m.x);
+    m.x=fract(m.x+dh*(30.0/360.0)*smoothstep(0.0,0.15,ms));
+    m.y=clamp(m.y*(1.0+ds),0.,1.);
+    m.z*=1.0+dl*0.5*smoothstep(0.0,0.3,ms);
+    c=hsv2rgb(m);
+  }
+  l=luma(clamp(c,0.,1.));
+  float ws=pow(1.-l,2.), wh=pow(l,2.), wm=max(0.0,1.0-ws-wh);
+  c+=uWS*ws+uWM*wm+uWH*wh+(uWL.x*ws+uWL.y*wm+uWL.z*wh)*0.2;
+  if(uCurveOn>0.5){
+    c=clamp(c,0.,1.); vec3 k=c*(255.0/256.0)+0.5/256.0;
+    c=vec3(texture(uCurve,vec2(k.r,0.5)).r,texture(uCurve,vec2(k.g,0.5)).g,texture(uCurve,vec2(k.b,0.5)).b);
+  }
+
+  // ---- detail
+  if(uClarity!=0.0){
+    float lod=log2(max(uTexSize.x,uTexSize.y)/110.0); vec2 d=exp2(lod)/uTexSize;
+    float bl=(luma(textureLod(uImg,su,lod).rgb)+luma(textureLod(uImg,su+vec2(d.x,0),lod).rgb)+luma(textureLod(uImg,su-vec2(d.x,0),lod).rgb)
+      +luma(textureLod(uImg,su+vec2(0,d.y),lod).rgb)+luma(textureLod(uImg,su-vec2(0,d.y),lod).rgb))/5.0;
+    float lc=luma(clamp(c,0.,1.));
+    c+=(luma(src)-bl)*uClarity*0.9*(1.0-pow(abs(lc-0.5)*2.0,2.0));
+  }
+  if(uSharpen>0.0){
+    vec2 d=max(1.0,max(uTexSize.x,uTexSize.y)/2400.0)/uTexSize;
+    float n=(luma(textureLod(uImg,su+vec2(d.x,0),0.0).rgb)+luma(textureLod(uImg,su-vec2(d.x,0),0.0).rgb)
+      +luma(textureLod(uImg,su+vec2(0,d.y),0.0).rgb)+luma(textureLod(uImg,su-vec2(0,d.y),0.0).rgb))*0.25;
+    c+=(luma(textureLod(uImg,su,0.0).rgb)-n)*uSharpen*2.0;
+  }
+
+  // ---- film effects (sized to the cropped frame, so preview and export match)
+  float asp=uOutSize.x/uOutSize.y;
   float r=length((uv-0.5)*vec2(asp,1.0))/length(vec2(asp,1.0)*0.5);
   c*=1.0-uVignette*smoothstep(0.3,1.05,r)*0.75;
-
   if(uGrain>0.0){
-    vec2 gp=uv*uTexSize*(1800.0/max(uTexSize.x,uTexSize.y));
+    vec2 gp=uv*uOutSize*(1800.0/max(uOutSize.x,uOutSize.y));
     float n=vnoise(gp)*0.6+vnoise(gp*2.13+17.0)*0.4-0.5;
-    float ll=dot(clamp(c,0.,1.),LW);
+    float ll=luma(clamp(c,0.,1.));
     c+=n*uGrain*0.32*(1.0-0.7*pow(abs(ll-0.5)*2.0,2.0));
   }
   if(uv.x<uSplit) c=src;
+  if(oob&&uOOB>0.5) c=vec3(0.07);
   o=vec4(clamp(c,0.,1.),1.0);
 }`;
 
@@ -449,10 +615,116 @@ const LOOKS = [
    p:{bw:1, bww:[.3,.59,.11], contrast:.3, fade:.04, shadow:[.08,.04,-.03], high:[.06,.035,-.02], gain:[1.07,.99,.84]}, fx:{grain:.2, vignette:.3}},
 ];
 const LOOK = Object.fromEntries(LOOKS.map(l=>[l.id,l]));
-function lookParams(s){
-  const p = Object.assign({}, DEF, (LOOK[s.look]||LOOKS[0]).p);
-  p.contrast += s.contrast; p.sat *= s.saturation;
-  return p;
+const lookParams=s=>Object.assign({},DEF,(LOOK[s.look]||LOOKS[0]).p);
+
+// ================================================================= edit settings
+const BANDS=[['Red',0],['Orange',30],['Yellow',60],['Green',120],['Aqua',180],['Blue',240],['Purple',275],['Magenta',315]];
+const Z8=()=>[0,0,0,0,0,0,0,0];
+const ID_CURVE=()=>({rgb:[[0,0],[1,1]],r:[[0,0],[1,1]],g:[[0,0],[1,1]],b:[[0,0],[1,1]]});
+const DEFAULTS={look:'chrome',strength:1,
+  exposure:0,contrast:0,highlights:0,shadows:0,whites:0,blacks:0,
+  warmth:0,tint:0,saturation:1,
+  mixH:Z8(),mixS:Z8(),mixL:Z8(),
+  curves:ID_CURVE(),
+  wheels:{sh:[0,0,0],mid:[0,0,0],hi:[0,0,0]},
+  clarity:0,sharpen:0,grain:0,glow:0,vignette:0,
+  rot:0,flipH:false,flipV:false,angle:0,crop:[0,0,1,1],aspect:'original',aspectSwap:false};
+const SECTIONS={
+  crop:['rot','flipH','flipV','angle','crop','aspect','aspectSwap'],
+  light:['exposure','contrast','highlights','shadows','whites','blacks'],
+  color:['warmth','tint','saturation'],
+  mixer:['mixH','mixS','mixL'],
+  curves:['curves'],
+  grading:['wheels'],
+  effects:['clarity','sharpen','grain','glow','vignette'],
+};
+// What a saved look ("My Look") keeps: everything except the crop and exposure, which belong to each photo.
+const PRESET_KEYS=['strength','contrast','highlights','shadows','whites','blacks','warmth','tint','saturation',
+  'mixH','mixS','mixL','curves','wheels','clarity','sharpen','grain','glow','vignette'];
+const clone=o=>structuredClone(o);
+const same=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
+function normalize(s){ const d=clone(DEFAULTS); const out={...d,...(s||{})};
+  out.wheels={...d.wheels,...(out.wheels||{})}; out.curves={...d.curves,...(out.curves||{})}; return out; }
+// The starting point for a look: built-in looks bring their film effects, saved looks bring all their edits.
+function defaultsFor(id){
+  const d=clone(DEFAULTS); d.look=id; const L=LOOK[id];
+  if(L?.preset) Object.assign(d,clone(L.preset));
+  else if(L){ const fx=L.fx||{}; d.grain=fx.grain||0; d.glow=fx.glow||0; d.vignette=fx.vignette||0; }
+  return d;
+}
+
+// ---- curves: monotone cubic through the points, baked into a 256-entry table per channel
+function curveFn(pts){
+  const p=[...pts].sort((a,b)=>a[0]-b[0]), n=p.length, xs=p.map(q=>q[0]), ys=p.map(q=>q[1]);
+  if(n<2) return x=>x;
+  const d=[], m=new Array(n);
+  for(let i=0;i<n-1;i++) d[i]=(ys[i+1]-ys[i])/Math.max(1e-6,xs[i+1]-xs[i]);
+  m[0]=d[0]; m[n-1]=d[n-2];
+  for(let i=1;i<n-1;i++) m[i]=d[i-1]*d[i]<=0?0:(d[i-1]+d[i])/2;
+  for(let i=0;i<n-1;i++){ if(d[i]===0){m[i]=0;m[i+1]=0;continue;}
+    const a=m[i]/d[i], b=m[i+1]/d[i], t=a*a+b*b; if(t>9){ const k=3/Math.sqrt(t); m[i]=k*a*d[i]; m[i+1]=k*b*d[i]; } }
+  return x=>{ if(x<=xs[0]) return ys[0]; if(x>=xs[n-1]) return ys[n-1];
+    let i=0; while(x>xs[i+1]) i++;
+    const h=xs[i+1]-xs[i], t=(x-xs[i])/h, t2=t*t, t3=t2*t;
+    return (2*t3-3*t2+1)*ys[i]+(t3-2*t2+t)*h*m[i]+(-2*t3+3*t2)*ys[i+1]+(t3-t2)*h*m[i+1]; };
+}
+const isIdCurve=c=>['rgb','r','g','b'].every(k=>same(c[k],[[0,0],[1,1]]));
+function curveTable(c){
+  const f=curveFn(c.rgb), fr=curveFn(c.r), fg=curveFn(c.g), fb=curveFn(c.b), out=new Uint8Array(256*4);
+  const cl=v=>Math.min(1,Math.max(0,v));
+  for(let i=0;i<256;i++){ const m=cl(f(i/255));
+    out[i*4]=Math.round(cl(fr(m))*255); out[i*4+1]=Math.round(cl(fg(m))*255); out[i*4+2]=Math.round(cl(fb(m))*255); out[i*4+3]=255; }
+  return out;
+}
+// ---- colour wheels: puck position → a brightness-neutral tint
+const LWJ=[0.2126,0.7152,0.0722];
+function hsv2rgbJ(h,s,v){ const f=n=>{ const k=(n+h*6)%6; return v-v*s*Math.max(0,Math.min(k,4-k,1)); }; return [f(5),f(3),f(1)]; }
+function wheelTint(w,k){
+  const amt=Math.min(1,Math.hypot(w[0],w[1])); if(!amt) return [0,0,0];
+  const rgb=hsv2rgbJ(((Math.atan2(w[1],w[0])/(2*Math.PI))+1)%1,1,1), l=rgb[0]*LWJ[0]+rgb[1]*LWJ[1]+rgb[2]*LWJ[2];
+  return rgb.map(v=>(v-l)*amt*k);
+}
+
+// ---- geometry: maps output pixels (0..1) to the source photo, through crop, straighten, flip and 90° rotation
+const mul=(a,b)=>{ const r=new Array(9).fill(0); for(let i=0;i<3;i++) for(let j=0;j<3;j++) for(let k=0;k<3;k++) r[i*3+j]+=a[i*3+k]*b[k*3+j]; return r; };
+function oriented(s,tw,th){ return s.rot%2?[th,tw]:[tw,th]; }
+function straightenM(s,Wo,Ho){
+  const a=s.angle*Math.PI/180, c=Math.cos(a), n=Math.sin(a);
+  return mul(mul(mul(mul([1/Wo,0,0,0,1/Ho,0,0,0,1],[1,0,Wo/2,0,1,Ho/2,0,0,1]),[c,n,0,-n,c,0,0,0,1]),[1,0,-Wo/2,0,1,-Ho/2,0,0,1]),[Wo,0,0,0,Ho,0,0,0,1]);
+}
+function geoMatrix(s,tw,th,full){
+  const [Wo,Ho]=oriented(s,tw,th), cr=full?[0,0,1,1]:s.crop;
+  let m=[cr[2],0,cr[0],0,cr[3],cr[1],0,0,1];
+  m=mul(straightenM(s,Wo,Ho),m);
+  if(s.flipH) m=mul([-1,0,1,0,1,0,0,0,1],m);
+  if(s.flipV) m=mul([1,0,0,0,-1,1,0,0,1],m);
+  const R=[[1,0,0,0,1,0,0,0,1],[0,1,0,-1,0,1,0,0,1],[-1,0,1,0,-1,1,0,0,1],[0,-1,1,1,0,0,0,0,1]][s.rot%4];
+  return mul(R,m);
+}
+function outDims(s,tw,th,full){ const [Wo,Ho]=oriented(s,tw,th), cr=full?[0,0,1,1]:s.crop; return [Wo*cr[2],Ho*cr[3]]; }
+// Is this crop rectangle fully inside the (straightened) photo?
+function cropValid(s,r,Wo,Ho){
+  const M=straightenM(s,Wo,Ho), e=1e-4;
+  for(const [x,y] of [[r[0],r[1]],[r[0]+r[2],r[1]],[r[0],r[1]+r[3]],[r[0]+r[2],r[1]+r[3]]]){
+    const u=M[0]*x+M[1]*y+M[2], v=M[3]*x+M[4]*y+M[5];
+    if(u<-e||u>1+e||v<-e||v>1+e) return false;
+  }
+  return r[2]>0&&r[3]>0;
+}
+function aspectRatio(s,Wo,Ho){ // in pixels (w/h), or null for free
+  if(s.aspect==='free') return null;
+  let a=s.aspect==='original'?Math.max(Wo,Ho)/Math.min(Wo,Ho):(([w,h])=>w/h)(s.aspect.split(':').map(Number));
+  if(Ho>Wo) a=1/a; if(s.aspectSwap) a=1/a; return a;
+}
+// Largest crop of the right shape, centred on (cx,cy), that fits inside the straightened photo.
+function fitCrop(s,Wo,Ho,cx=.5,cy=.5){
+  const A=aspectRatio(s,Wo,Ho), rn=A?A*Ho/Wo:s.crop[2]/s.crop[3];
+  let w0=1,h0=1/rn; if(h0>1){ h0=1; w0=rn; }
+  let lo=0, hi=1;
+  for(let i=0;i<30;i++){ const k=(lo+hi)/2, w=w0*k, h=h0*k;
+    const r=[Math.min(1-w,Math.max(0,cx-w/2)),Math.min(1-h,Math.max(0,cy-h/2)),w,h];
+    if(cropValid(s,r,Wo,Ho)) lo=k; else hi=k; }
+  const w=w0*lo, h=h0*lo; s.crop=[Math.min(1-w,Math.max(0,cx-w/2)),Math.min(1-h,Math.max(0,cy-h/2)),w,h];
 }
 
 // ================================================================= renderer
@@ -476,9 +748,14 @@ class Renderer{
     gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR_MIPMAP_LINEAR);
     gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
     this.max=gl.getParameter(gl.MAX_TEXTURE_SIZE); this.u={}; this.tw=0;
-    gl.uniform1i(this.U('uImg'),0); gl.uniform1i(this.U('uLut'),1);
+    gl.uniform1i(this.U('uImg'),0); gl.uniform1i(this.U('uLut'),1); gl.uniform1i(this.U('uCurve'),2);
     this.luts=new Map();
     this.dummy=this.make3D(2,new Float32Array([0,0,0,1,0,0,0,1,0,1,1,0,0,0,1,1,0,1,0,1,1,1,1,1]));
+    this.curveTex=gl.createTexture(); gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D,this.curveTex);
+    for(const [k,v] of [[gl.TEXTURE_MIN_FILTER,gl.LINEAR],[gl.TEXTURE_MAG_FILTER,gl.LINEAR],[gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE],[gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE]])
+      gl.texParameteri(gl.TEXTURE_2D,k,v);
+    gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,256,1,0,gl.RGBA,gl.UNSIGNED_BYTE,curveTable(ID_CURVE()));
+    gl.activeTexture(gl.TEXTURE0); this.curveKey='';
   }
   U(n){ return n in this.u ? this.u[n] : (this.u[n]=this.gl.getUniformLocation(this.prog,n)); }
   make3D(size,data){
@@ -491,16 +768,16 @@ class Renderer{
   }
   dropLut(id){ const t=this.luts.get(id); if(t){ this.gl.deleteTexture(t); this.luts.delete(id); } }
   setImage(src){
-    const gl=this.gl; gl.bindTexture(gl.TEXTURE_2D,this.tex);
+    const gl=this.gl; gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D,this.tex);
     gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,src);
     gl.generateMipmap(gl.TEXTURE_2D); this.tw=src.width; this.th=src.height;
   }
   setPixels(w,h,data){
-    const gl=this.gl; gl.bindTexture(gl.TEXTURE_2D,this.tex);
+    const gl=this.gl; gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D,this.tex);
     gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,w,h,0,gl.RGBA,gl.UNSIGNED_BYTE,data);
     gl.generateMipmap(gl.TEXTURE_2D); this.tw=w; this.th=h;
   }
-  render(s,w,h,split=-1){
+  render(s,w,h,split=-1,opts={}){
     const gl=this.gl, U=n=>this.U(n), p=lookParams(s);
     if(this.c.width!==w) this.c.width=w; if(this.c.height!==h) this.c.height=h;
     gl.viewport(0,0,w,h);
@@ -511,14 +788,26 @@ class Renderer{
       gl.bindTexture(gl.TEXTURE_3D,t);
       gl.uniform1f(U('uUseLut'),1); gl.uniform1f(U('uLutSize'),L.lut.size); gl.uniform2f(U('uLutDomain'),L.lut.dmin,L.lut.dmax);
     } else { gl.bindTexture(gl.TEXTURE_3D,this.dummy); gl.uniform1f(U('uUseLut'),0); }
+    const ck=JSON.stringify(s.curves), curveOn=!isIdCurve(s.curves);
+    gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D,this.curveTex);
+    if(curveOn&&ck!==this.curveKey){ gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,256,1,0,gl.RGBA,gl.UNSIGNED_BYTE,curveTable(s.curves)); this.curveKey=ck; }
     gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D,this.tex);
     const f=(n,v)=>gl.uniform1f(U(n),v), v3=(n,v)=>gl.uniform3fv(U(n),v);
+    gl.uniformMatrix3fv(U('uGeo'),true,geoMatrix(s,this.tw,this.th,opts.full));
+    const od=outDims(s,this.tw,this.th,opts.full); gl.uniform2f(U('uOutSize'),od[0],od[1]); f('uOOB',opts.full?1:0);
     f('uExposure',s.exposure); f('uWarm',s.warmth); f('uTint',s.tint);
+    f('uHi',s.highlights); f('uSh',s.shadows); f('uWh',s.whites); f('uBl',s.blacks);
     gl.uniformMatrix3fv(U('uMix'),true,p.mix);
     f('uSat',p.sat); f('uContrast',p.contrast); f('uFade',p.fade); f('uBW',p.bw); v3('uBWW',p.bww);
     v3('uShadow',p.shadow); v3('uHigh',p.high); v3('uLift',p.lift); v3('uGamma',p.gamma); v3('uGain',p.gain);
     gl.uniform1fv(U('uHS'),p.hs); gl.uniform1fv(U('uHH'),p.hh); gl.uniform1fv(U('uHL'),p.hl);
-    f('uStrength',s.strength); f('uGrain',s.grain); f('uGlow',s.glow); f('uVignette',s.vignette); f('uSplit',split);
+    f('uStrength',s.strength); f('uUCon',s.contrast); f('uUSat',s.saturation);
+    f('uMixOn',[...s.mixH,...s.mixS,...s.mixL].some(v=>v)?1:0);
+    gl.uniform1fv(U('uMH'),s.mixH); gl.uniform1fv(U('uMS'),s.mixS); gl.uniform1fv(U('uML'),s.mixL);
+    const W=s.wheels; v3('uWS',wheelTint(W.sh,.18)); v3('uWM',wheelTint(W.mid,.14)); v3('uWH',wheelTint(W.hi,.18)); v3('uWL',[W.sh[2],W.mid[2],W.hi[2]]);
+    f('uCurveOn',curveOn?1:0);
+    f('uClarity',s.clarity); f('uSharpen',s.sharpen);
+    f('uGrain',s.grain); f('uGlow',s.glow); f('uVignette',s.vignette); f('uSplit',split);
     gl.uniform2f(U('uTexSize'),this.tw,this.th);
     gl.drawArrays(gl.TRIANGLE_STRIP,0,4);
   }
@@ -583,7 +872,6 @@ async function withExif(blob,seg){
   let at=2; if(out[2]===0xFF&&out[3]===0xE0) at=4+((out[4]<<8)|out[5]);     // keep JFIF header first
   return new Blob([out.subarray(0,at),seg,out.subarray(at)],{type:'image/jpeg'});
 }
-
 // ================================================================= storage
 const nativeApp=window.webkit?.messageHandlers?.darkroom;
 const store={
@@ -604,11 +892,9 @@ const store={
     try{ nativeApp?nativeApp.postMessage({cmd:'saveLuts',data:raw}):localStorage.setItem('darkroom.luts',raw); }
     catch(e){ toast('Your LUTs are added, but this browser could not save them for next time. The Mac app has no such limit.',6000); } }
 };
-
 // ================================================================= app state
 const $=id=>document.getElementById(id);
-const DEFAULTS={look:'chrome',strength:1,exposure:0,warmth:0,tint:0,contrast:0,saturation:1,grain:0,glow:0,vignette:0};
-const S={photos:[],cur:-1,split:false,splitPos:.5,hold:false};
+const S={photos:[],cur:-1,split:false,splitPos:.5,hold:false,cropMode:false,pick:null,band:0,curveCh:'rgb'};
 const cache=new Map();
 let main,thumbR,exportR;
 try{
@@ -623,62 +909,246 @@ function toast(msg,ms=2800){const t=$('toast');t.textContent=msg;t.classList.add
 function busy(on,txt='Loading…'){$('busy').classList.toggle('on',on);$('busyTxt').textContent=txt;}
 
 // ---- history & persistence
-function snap(p){ p.hist.push({...p.s}); if(p.hist.length>100) p.hist.shift(); p.fut.length=0; syncUndo(); }
+function snap(p){ p.hist.push(clone(p.s)); if(p.hist.length>100) p.hist.shift(); p.fut.length=0; syncUndo(); }
 function syncUndo(){ const p=cur(); $('undoBtn').disabled=!p||!p.hist.length; $('redoBtn').disabled=!p||!p.fut.length; }
 function persist(p){
-  const e=store.data.edits; delete e[p.key]; e[p.key]={...p.s};
+  const e=store.data.edits; delete e[p.key]; e[p.key]=clone(p.s);
   const ks=Object.keys(e); for(let i=0;i<ks.length-500;i++) delete e[ks[i]];
-  store.data.template={...p.s}; store.save();
+  store.data.template={look:p.s.look,strength:p.s.strength}; store.save();
 }
 // Call after any change to p.s
 function changed(p,{thumbs=true}={}){
-  p.lk.textContent=LOOK[p.s.look].name;
-  if(p===cur()){ syncSliders(); syncLooks(); render(); if(thumbs) lookThumbsSoon(); syncUndo(); }
+  p.lk.textContent=LOOK[p.s.look]?.name||'';
+  if(p===cur()){ syncAll(); if(S.cropMode) syncCropBox(); layout(); if(thumbs) lookThumbsSoon(); }
   persist(p);
 }
-function undo(){ const p=cur(); if(!p||!p.hist.length) return; p.fut.push({...p.s}); p.s=p.hist.pop(); changed(p); }
-function redo(){ const p=cur(); if(!p||!p.fut.length) return; p.hist.push({...p.s}); p.s=p.fut.pop(); changed(p); }
+function undo(){ const p=cur(); if(!p||!p.hist.length) return; p.fut.push(clone(p.s)); p.s=p.hist.pop(); changed(p); }
+function redo(){ const p=cur(); if(!p||!p.fut.length) return; p.hist.push(clone(p.s)); p.s=p.fut.pop(); changed(p); }
 
 // ================================================================= sliders
 const pct=v=>Math.round(v*100)+'%', sgn=v=>{const r=Math.round(v*100);return (r>0?'+':'')+r;};
-const SLIDERS=[
-  ['Look'],
-  ['strength','Strength',0,1,.01,pct],
-  ['Light'],
-  ['exposure','Exposure',-2,2,.05,v=>(v>0?'+':'')+v.toFixed(2)+' EV'],
-  ['contrast','Contrast',-.5,.5,.01,sgn],
-  ['Colour'],
-  ['warmth','Warmth',-1,1,.01,sgn],
-  ['tint','Tint',-1,1,.01,sgn],
-  ['saturation','Saturation',0,2,.01,pct],
-  ['Film'],
-  ['grain','Grain',0,1,.01,pct],
-  ['glow','Halation glow',0,1,.01,pct],
-  ['vignette','Vignette',-.5,1,.01,sgn],
-];
-const THUMB_KEYS=['exposure','warmth','tint','contrast','saturation'];
-const sl={};
-for(const [k,label,min,max,step,fmt] of SLIDERS){
-  if(!label){ const g=document.createElement('div'); g.className='sg'; g.textContent=k; $('sliders').appendChild(g); continue; }
-  const d=document.createElement('div'); d.className='sl';
-  d.innerHTML=`<label for="s-${k}">${label}<output for="s-${k}"></output></label><input id="s-${k}" type="range" min="${min}" max="${max}" step="${step}">`;
-  const inp=d.querySelector('input'), out=d.querySelector('output');
-  sl[k]={inp,out,fmt,row:d};
+const SL=[];
+// def: {label,min,max,step,fmt,get(s),set(s,v),def(s),after(s)}
+function slider(parent,def){
+  const id='s'+SL.length, d=document.createElement('div'); d.className='sl';
+  d.innerHTML=`<label for="${id}">${def.label}<output for="${id}"></output></label><input id="${id}" type="range" min="${def.min}" max="${def.max}" step="${def.step}">`;
+  const inp=d.querySelector('input'), out=d.querySelector('output'), o={...def,inp,out,row:d};
   inp.addEventListener('input',()=>{ const p=cur(); if(!p) return;
     if(!p.live){ snap(p); p.live=true; }
-    p.s[k]=+inp.value; out.textContent=fmt(p.s[k]); d.classList.toggle('changed',p.s[k]!==DEFAULTS[k]);
-    render(); if(THUMB_KEYS.includes(k)) lookThumbsSoon(); });
+    def.set(p.s,+inp.value); def.after?.(p.s); out.textContent=def.fmt(def.get(p.s));
+    d.classList.toggle('changed',def.get(p.s)!==def.def(p.s)); syncDots();
+    if(def.after){ syncCropBox(); layout(); } else render(); lookThumbsSoon(); });
   inp.addEventListener('change',()=>{ const p=cur(); if(!p) return; p.live=false; persist(p); syncUndo(); });
-  inp.addEventListener('dblclick',()=>{ const p=cur(); if(!p||p.s[k]===DEFAULTS[k]) return; snap(p); p.s[k]=DEFAULTS[k]; changed(p); });
-  $('sliders').appendChild(d);
+  inp.addEventListener('dblclick',()=>{ const p=cur(); if(!p||def.get(p.s)===def.def(p.s)) return; snap(p); def.set(p.s,def.def(p.s)); def.after?.(p.s); changed(p); });
+  parent.appendChild(d); SL.push(o); return o;
 }
-function syncSliders(){ const p=cur(), s=p?p.s:DEFAULTS;
-  for(const k in sl){ sl[k].inp.value=s[k]; sl[k].out.textContent=sl[k].fmt(s[k]); sl[k].inp.disabled=!p;
-    sl[k].row.classList.toggle('changed',s[k]!==DEFAULTS[k]); } }
+const key=(k,label,min,max,step,fmt)=>({label,min,max,step,fmt,get:s=>s[k],set:(s,v)=>s[k]=v,def:s=>defaultsFor(s.look)[k]});
+slider($('strengthBox'),key('strength','Look strength',0,1,.01,pct));
+for(const a of [['exposure','Exposure',-2,2,.05,v=>(v>0?'+':'')+v.toFixed(2)+' EV'],['contrast','Contrast',-.5,.5,.01,sgn],
+  ['highlights','Highlights',-1,1,.01,sgn],['shadows','Shadows',-1,1,.01,sgn],['whites','Whites',-1,1,.01,sgn],['blacks','Blacks',-1,1,.01,sgn]])
+  slider($('lightBox'),key(...a));
+for(const a of [['warmth','Warmth',-1,1,.01,sgn],['tint','Tint (green ↔ magenta)',-1,1,.01,sgn],['saturation','Saturation',0,2,.01,pct]])
+  slider($('colorBox'),key(...a));
+for(const [k,label,fmt] of [['mixH','Hue',sgn],['mixS','Saturation',sgn],['mixL','Luminance',sgn]])
+  slider($('mixBox'),{label,min:-1,max:1,step:.01,fmt,get:s=>s[k][S.band],set:(s,v)=>s[k][S.band]=v,def:()=>0});
+for(const a of [['clarity','Clarity',-1,1,.01,sgn],['sharpen','Sharpen',0,1,.01,pct],['grain','Film grain',0,1,.01,pct],
+  ['glow','Halation glow',0,1,.01,pct],['vignette','Vignette',-.5,1,.01,sgn]])
+  slider($('fxBox'),key(...a));
+slider($('straightBox'),{label:'Straighten',min:-45,max:45,step:.1,fmt:v=>(v>0?'+':'')+v.toFixed(1)+'°',get:s=>s.angle,set:(s,v)=>s.angle=v,def:()=>0,
+  after:s=>{ const [Wo,Ho]=oriented(s,main.tw,main.th); fitCrop(s,Wo,Ho,s.crop[0]+s.crop[2]/2,s.crop[1]+s.crop[3]/2); }});
+
+// ================================================================= edit tab: sync
+function syncDots(){
+  const p=cur(); if(!p) return; const d=defaultsFor(p.s.look);
+  for(const el of document.querySelectorAll('details[data-sec]')){
+    el.classList.toggle('changed',SECTIONS[el.dataset.sec].some(k=>!same(p.s[k],d[k])));
+  }
+  [...$('bands').children].forEach((b,i)=>b.classList.toggle('mod',!!(p.s.mixH[i]||p.s.mixS[i]||p.s.mixL[i])));
+}
+function syncAll(){
+  const p=cur(), s=p?p.s:DEFAULTS;
+  for(const o of SL){ o.inp.value=o.get(s); o.out.textContent=o.fmt(o.get(s)); o.inp.disabled=!p; o.row.classList.toggle('changed',!!p&&o.get(s)!==o.def(s)); }
+  [...$('aspects').children].forEach(b=>b.classList.toggle('on',b.dataset.a===s.aspect||(b.dataset.a==='swap'&&s.aspectSwap)));
+  [...$('bands').children].forEach((b,i)=>b.classList.toggle('on',i===S.band));
+  [...$('curveCh').children].forEach(b=>b.classList.toggle('on',b.dataset.c===S.curveCh));
+  $('cropBtn').textContent=S.cropMode?'Done cropping':'Crop photo'; $('cropBtn').classList.toggle('primary',S.cropMode);
+  syncDots(); drawCurve(); drawWheels(); syncLooks(); syncUndo();
+  const L=LOOK[s.look]; $('saveLookBtn').disabled=$('cubeBtn').disabled=!p;
+  $('saveLookBtn').textContent=L?.preset?'Save My Look…':'Save as My Look';
+}
+for(const el of document.querySelectorAll('details[data-sec]')){
+  el.querySelector('.rs').addEventListener('click',e=>{ e.preventDefault(); e.stopPropagation();
+    const p=cur(); if(!p) return; const d=defaultsFor(p.s.look), keys=SECTIONS[el.dataset.sec];
+    if(keys.every(k=>same(p.s[k],d[k]))) return; snap(p); for(const k of keys) p.s[k]=clone(d[k]); changed(p); });
+}
+// tabs
+function showTab(t){ for(const [b,pane] of [['tabLooks','paneLooks'],['tabEdit','paneEdit']]){ const on=b===t; $(b).setAttribute('aria-selected',String(on)); $(pane).hidden=!on; } }
+$('tabLooks').onclick=()=>showTab('tabLooks'); $('tabEdit').onclick=()=>showTab('tabEdit');
+
+// ================================================================= crop & rotate
+for(const a of ['original','free','1:1','4:5','3:2','16:9','swap']){
+  const b=document.createElement('button'); b.className='pill'; b.dataset.a=a;
+  b.textContent={original:'Original',free:'Free',swap:'⇄'}[a]||a; if(a==='swap') b.title='Switch portrait / landscape';
+  b.onclick=()=>{ const p=cur(); if(!p) return; snap(p);
+    if(a==='swap'){ if(p.s.aspect==='free') return; p.s.aspectSwap=!p.s.aspectSwap; } else p.s.aspect=a;
+    if(p.s.aspect!=='free'){ const [Wo,Ho]=oriented(p.s,main.tw,main.th); fitCrop(p.s,Wo,Ho); }
+    if(!S.cropMode) setCropMode(true); changed(p); };
+  $('aspects').appendChild(b);
+}
+function setCropMode(on){
+  if(on&&!cur()) return;
+  S.cropMode=on; $('stage').classList.toggle('cropping',on);
+  if(on){ setSplitMode(false); showTab('tabEdit'); $('secCrop').open=true; }
+  syncAll(); syncCropBox(); layout();
+}
+$('cropBtn').onclick=()=>setCropMode(!S.cropMode);
+function rotate(dir){ const p=cur(); if(!p) return; snap(p); p.s.rot=(p.s.rot+dir+4)%4; p.s.crop=[0,0,1,1];
+  const [Wo,Ho]=oriented(p.s,main.tw,main.th); fitCrop(p.s,Wo,Ho); changed(p); }
+$('rotL').onclick=()=>rotate(-1); $('rotR').onclick=()=>rotate(1);
+$('flipH').onclick=()=>{ const p=cur(); if(!p) return; snap(p); p.s.flipH=!p.s.flipH; p.s.angle=-p.s.angle; p.s.crop[0]=1-p.s.crop[0]-p.s.crop[2]; changed(p); };
+$('flipV').onclick=()=>{ const p=cur(); if(!p) return; snap(p); p.s.flipV=!p.s.flipV; p.s.angle=-p.s.angle; p.s.crop[1]=1-p.s.crop[1]-p.s.crop[3]; changed(p); };
+function syncCropBox(){ const p=cur(); if(!p) return; const [x,y,w,h]=p.s.crop, b=$('cropBox').style;
+  b.left=x*100+'%'; b.top=y*100+'%'; b.width=w*100+'%'; b.height=h*100+'%'; }
+let cdrag=null;
+$('cropBox').addEventListener('pointerdown',e=>{ const p=cur(); if(!p||!S.cropMode) return; e.preventDefault(); e.stopPropagation();
+  snap(p); cdrag={h:e.target.dataset.h||'move',x:e.clientX,y:e.clientY,r:[...p.s.crop]}; $('cropBox').setPointerCapture(e.pointerId); });
+$('cropBox').addEventListener('pointermove',e=>{ if(!cdrag) return; const p=cur(), s=p.s, R=$('stage').getBoundingClientRect();
+  const dx=(e.clientX-cdrag.x)/R.width, dy=(e.clientY-cdrag.y)/R.height, [x,y,w,h]=cdrag.r, hd=cdrag.h;
+  const [Wo,Ho]=oriented(s,main.tw,main.th), A=aspectRatio(s,Wo,Ho), rn=A?A*Ho/Wo:null, MIN=.04;
+  const tryR=r=>{ if(r[2]>=MIN&&r[3]>=MIN&&cropValid(s,r,Wo,Ho)){ s.crop=r; return true; } return false; };
+  if(hd==='move'){ tryR([x+dx,y+dy,w,h])||tryR([x+dx,y,w,h])||tryR([x,y+dy,w,h]); }
+  else{
+    let L=x,T=y,Rr=x+w,B=y+h;
+    if(hd.includes('w')) L+=dx; if(hd.includes('e')) Rr+=dx; if(hd.includes('n')) T+=dy; if(hd.includes('s')) B+=dy;
+    if(rn){
+      if(hd.length===2){ const nw=Rr-L, nh=nw/rn; if(hd.includes('n')) T=B-nh; else B=T+nh; }
+      else if(hd==='e'||hd==='w'){ const nh=(Rr-L)/rn, cy=y+h/2; T=cy-nh/2; B=cy+nh/2; }
+      else { const nw=(B-T)*rn, cx=x+w/2; L=cx-nw/2; Rr=cx+nw/2; }
+    }
+    tryR([L,T,Rr-L,B-T]);
+  }
+  syncCropBox(); render(); });
+$('cropBox').addEventListener('pointerup',()=>{ if(!cdrag) return; cdrag=null; const p=cur(); persist(p); syncAll(); lookThumbsSoon(); });
+
+// ================================================================= colour mixer
+BANDS.forEach(([name,h],i)=>{ const b=document.createElement('button'); b.title=name; b.setAttribute('aria-label',name);
+  b.style.background=`hsl(${h},75%,52%)`; b.onclick=()=>{ S.band=i; syncAll(); }; $('bands').appendChild(b); });
+
+// ================================================================= curves
+for(const [c,label] of [['rgb','RGB'],['r','Red'],['g','Green'],['b','Blue']]){
+  const b=document.createElement('button'); b.className='pill'; b.dataset.c=c; b.textContent=label;
+  b.onclick=()=>{ S.curveCh=c; syncAll(); }; $('curveCh').appendChild(b);
+}
+const CCOL={rgb:'#ececef',r:'#ff6b6b',g:'#5fd38a',b:'#6aa8ff'};
+let histo=null;
+const CPAD=18; // canvas px of padding so end points are never cut off
+function drawCurve(){
+  const cv=$('curveCv'), x=cv.getContext('2d'), p=cur(), s=p?p.s:DEFAULTS;
+  x.setTransform(1,0,0,1,0,0); x.fillStyle='#121215'; x.fillRect(0,0,cv.width,cv.height);
+  x.translate(CPAD,CPAD); const W=cv.width-2*CPAD, H=cv.height-2*CPAD;
+  if(histo){ x.fillStyle='rgba(255,255,255,.07)'; x.beginPath(); x.moveTo(0,H);
+    histo.forEach((v,i)=>x.lineTo(i/(histo.length-1)*W,H-v*H*.9)); x.lineTo(W,H); x.fill(); }
+  x.strokeStyle='rgba(255,255,255,.08)'; x.lineWidth=1;
+  for(let i=1;i<4;i++){ x.beginPath(); x.moveTo(i*W/4,0); x.lineTo(i*W/4,H); x.moveTo(0,i*H/4); x.lineTo(W,i*H/4); x.stroke(); }
+  x.setLineDash([6,6]); x.beginPath(); x.moveTo(0,H); x.lineTo(W,0); x.stroke(); x.setLineDash([]);
+  for(const c of ['rgb','r','g','b']){ if(c===S.curveCh) continue; if(same(s.curves[c],[[0,0],[1,1]])) continue;
+    const f=curveFn(s.curves[c]); x.strokeStyle=CCOL[c]+'55'; x.lineWidth=2; x.beginPath();
+    for(let i=0;i<=W;i+=4) x.lineTo(i,H-Math.min(1,Math.max(0,f(i/W)))*H); x.stroke(); }
+  const pts=s.curves[S.curveCh], f=curveFn(pts);
+  x.strokeStyle=CCOL[S.curveCh]; x.lineWidth=3; x.beginPath();
+  for(let i=0;i<=W;i+=2) x.lineTo(i,H-Math.min(1,Math.max(0,f(i/W)))*H); x.stroke();
+  for(const [px,py] of pts){ x.fillStyle='#16161a'; x.strokeStyle=CCOL[S.curveCh]; x.lineWidth=3;
+    x.beginPath(); x.arc(px*W,H-py*H,9,0,7); x.fill(); x.stroke(); }
+}
+let kdrag=null;
+const cvPos=e=>{ const cv=$('curveCv'), b=cv.getBoundingClientRect(), k=b.width/cv.width, pad=CPAD*k;
+  const r={width:b.width-2*pad,height:b.height-2*pad};
+  return [Math.min(1,Math.max(0,(e.clientX-b.left-pad)/r.width)),Math.min(1,Math.max(0,1-(e.clientY-b.top-pad)/r.height)),r]; };
+$('curveCv').addEventListener('pointerdown',e=>{ const p=cur(); if(!p) return; const [px,py,r]=cvPos(e), pts=p.s.curves[S.curveCh];
+  snap(p); let i=pts.findIndex(([a,b])=>Math.hypot((a-px)*r.width,(b-py)*r.height)<12);
+  if(i<0){ pts.push([px,py]); pts.sort((a,b)=>a[0]-b[0]); i=pts.findIndex(q=>q[0]===px&&q[1]===py); }
+  kdrag={i}; $('curveCv').setPointerCapture(e.pointerId); drawCurve(); render(); });
+$('curveCv').addEventListener('pointermove',e=>{ if(!kdrag) return; const p=cur(), pts=p.s.curves[S.curveCh], [px,py]=cvPos(e), i=kdrag.i;
+  const lo=i===0?0:pts[i-1][0]+.01, hi=i===pts.length-1?1:pts[i+1][0]-.01;
+  pts[i]=[i===0?0:i===pts.length-1?1:Math.min(hi,Math.max(lo,px)),py]; drawCurve(); syncDots(); render(); });
+$('curveCv').addEventListener('pointerup',()=>{ if(!kdrag) return; kdrag=null; const p=cur(); persist(p); syncUndo(); lookThumbsSoon(); });
+$('curveCv').addEventListener('dblclick',e=>{ const p=cur(); if(!p) return; const [px,py,r]=cvPos(e), pts=p.s.curves[S.curveCh];
+  const i=pts.findIndex(([a,b])=>Math.hypot((a-px)*r.width,(b-py)*r.height)<12);
+  if(i>0&&i<pts.length-1){ pts.splice(i,1); changed(p); } });
+
+// ================================================================= colour wheels
+const WHEELS=[['sh','Shadows'],['mid','Midtones'],['hi','Highlights']];
+const wheelEls={};
+for(const [k,label] of WHEELS){
+  const d=document.createElement('div'); d.className='wheel';
+  d.innerHTML=`<canvas width="200" height="200" aria-label="${label} colour wheel"></canvas><div class="wl">${label}</div>`;
+  $('wheels').appendChild(d); const cv=d.querySelector('canvas'); wheelEls[k]=cv;
+  slider(d,{label:'Brightness',min:-1,max:1,step:.01,fmt:sgn,get:s=>s.wheels[k][2],set:(s,v)=>s.wheels[k][2]=v,def:()=>0});
+  let wd=false;
+  const setW=e=>{ const r=cv.getBoundingClientRect(), p=cur(); let x=((e.clientX-r.left)/r.width-.5)*2, y=((e.clientY-r.top)/r.height-.5)*2;
+    const m=Math.hypot(x,y); if(m>1){ x/=m; y/=m; } p.s.wheels[k][0]=+x.toFixed(3); p.s.wheels[k][1]=+y.toFixed(3); drawWheels(); syncDots(); render(); };
+  cv.addEventListener('pointerdown',e=>{ const p=cur(); if(!p) return; snap(p); wd=true; cv.setPointerCapture(e.pointerId); setW(e); });
+  cv.addEventListener('pointermove',e=>{ if(wd) setW(e); });
+  cv.addEventListener('pointerup',()=>{ if(!wd) return; wd=false; persist(cur()); syncUndo(); lookThumbsSoon(); });
+  cv.addEventListener('dblclick',()=>{ const p=cur(); if(!p) return; snap(p); p.s.wheels[k][0]=0; p.s.wheels[k][1]=0; changed(p); });
+}
+function drawWheels(){
+  const s=cur()?.s||DEFAULTS;
+  for(const [k] of WHEELS){ const cv=wheelEls[k], x=cv.getContext('2d'), W=cv.width, R=W/2-6;
+    x.clearRect(0,0,W,W);
+    const g=x.createConicGradient(0,W/2,W/2); for(let i=0;i<=12;i++) g.addColorStop(i/12,`hsl(${i*30},80%,55%)`);
+    x.fillStyle=g; x.beginPath(); x.arc(W/2,W/2,R,0,7); x.fill();
+    const rg=x.createRadialGradient(W/2,W/2,0,W/2,W/2,R); rg.addColorStop(0,'rgba(40,40,46,1)'); rg.addColorStop(1,'rgba(40,40,46,0.15)');
+    x.fillStyle=rg; x.beginPath(); x.arc(W/2,W/2,R,0,7); x.fill();
+    x.strokeStyle='rgba(255,255,255,.15)'; x.lineWidth=2; x.beginPath(); x.arc(W/2,W/2,R,0,7); x.stroke();
+    x.beginPath(); x.moveTo(W/2-8,W/2); x.lineTo(W/2+8,W/2); x.moveTo(W/2,W/2-8); x.lineTo(W/2,W/2+8); x.stroke();
+    const [wx,wy]=s.wheels[k]; x.lineWidth=4; x.strokeStyle='#fff'; x.fillStyle='rgba(0,0,0,.4)';
+    x.beginPath(); x.arc(W/2+wx*R,W/2+wy*R,11,0,7); x.fill(); x.stroke(); }
+}
+
+// ================================================================= pickers (white balance, colour mixer)
+let pix=null;
+function sampleAt(e){
+  const p=cur(), r=$('stage').getBoundingClientRect(), bmp=S.bmp; if(!p||!bmp) return null;
+  const vx=(e.clientX-r.left)/r.width, vy=(e.clientY-r.top)/r.height, M=geoMatrix(p.s,main.tw,main.th,S.cropMode);
+  const u=M[0]*vx+M[1]*vy+M[2], v=M[3]*vx+M[4]*vy+M[5]; if(u<0||u>1||v<0||v>1) return null;
+  if(!pix||pix.bmp!==bmp){ const c=document.createElement('canvas'); c.width=bmp.width; c.height=bmp.height;
+    const x=c.getContext('2d',{willReadFrequently:true}); x.drawImage(bmp,0,0); pix={bmp,x}; }
+  const px=Math.round(u*(bmp.width-1)), py=Math.round(v*(bmp.height-1)), R=3;
+  const d=pix.x.getImageData(Math.max(0,px-R),Math.max(0,py-R),R*2+1,R*2+1).data; let a=[0,0,0], n=0;
+  for(let i=0;i<d.length;i+=4){ a[0]+=d[i]; a[1]+=d[i+1]; a[2]+=d[i+2]; n++; }
+  return a.map(v=>v/n/255);
+}
+function startPick(kind){ if(!cur()) return; S.pick=kind; $('stage').classList.add('picking'); setSplitMode(false);
+  toast(kind==='wb'?'Click something in the photo that should be white or grey':'Click a colour in the photo to adjust it',4000); }
+function endPick(){ S.pick=null; $('stage').classList.remove('picking'); }
+$('wbPick').onclick=()=>startPick('wb'); $('mixPick').onclick=()=>startPick('mix');
+function pickAt(e){
+  const p=cur(), c=sampleAt(e), kind=S.pick; endPick(); if(!c) return;
+  if(kind==='wb'){
+    const lin=c.map(v=>v<=.04045?v/12.92:Math.pow((v+.055)/1.055,2.4));
+    if(Math.min(...lin)<.004){ toast('That spot is too dark. Pick something light grey or white.',4000); return; }
+    let best=[0,0], bv=1e9;
+    for(let w=-1;w<=1.0001;w+=.02) for(let t=-1;t<=1.0001;t+=.02){
+      const r=lin[0]*2**(.6*w+.2*t), g=lin[1]*2**(-.4*t), b=lin[2]*2**(-.6*w+.2*t), m=(r+g+b)/3;
+      const vr=((r-m)**2+(g-m)**2+(b-m)**2)/(m*m); if(vr<bv){ bv=vr; best=[w,t]; } }
+    snap(p); p.s.warmth=+best[0].toFixed(2); p.s.tint=+best[1].toFixed(2); changed(p);
+    toast(bv>.003?'Corrected as far as Warmth and Tint go. The cast is very strong.':'White balance set');
+  } else {
+    const mx=Math.max(...c), mn=Math.min(...c), sat=mx?(mx-mn)/mx:0;
+    if(sat<.12){ toast('That spot is almost grey. Pick a more colourful area.',3500); return; }
+    let h=0; const d=mx-mn;
+    if(mx===c[0]) h=((c[1]-c[2])/d+6)%6; else if(mx===c[1]) h=(c[2]-c[0])/d+2; else h=(c[0]-c[1])/d+4;
+    h*=60; let bi=0, bd=1e9;
+    BANDS.forEach(([,bh],i)=>{ const dd=Math.min(Math.abs(h-bh),360-Math.abs(h-bh)); if(dd<bd){ bd=dd; bi=i; } });
+    S.band=bi; $('secMixer').open=true; showTab('tabEdit'); syncAll(); $('secMixer').scrollIntoView({block:'nearest',behavior:'smooth'});
+    toast(`Adjusting ${BANDS[bi][0].toLowerCase()}s`);
+  }
+}
 
 // ================================================================= looks panel
 let lookEls={};
-const MY='My LUTs';
+const MY='My Looks';
 function buildLooks(){
   lookEls={}; const root=$('looks'); root.textContent='';
   const groups=[...new Set([...LOOKS.map(l=>l.group),MY])];
@@ -690,35 +1160,42 @@ function buildLooks(){
     const grid=document.createElement('div'); grid.className='looks'; root.appendChild(grid);
     for(const L of LOOKS.filter(l=>l.group===g)){
       const el=document.createElement('button'); el.className='look'; el.title=L.desc; el.setAttribute('aria-pressed','false');
-      el.innerHTML=`<canvas width="200" height="200"></canvas><span></span>`+(L.lut?`<i class="rmL" title="Remove this LUT" aria-label="Remove ${L.name}">×</i>`:'');
+      const acts=L.preset?'<span class="act"><i class="sh" title="Share this look as a file">⤓</i><i class="x" title="Remove">×</i></span>'
+        :L.lut?'<span class="act"><i class="x" title="Remove this LUT">×</i></span>':'';
+      el.innerHTML=`<canvas width="200" height="200"></canvas><span></span>${acts}`;
       el.querySelector('span').textContent=L.name;
-      el.onclick=e=>{ if(e.target.classList.contains('rmL')) removeLut(L.id); else selectLook(L.id); };
+      el.onclick=e=>{ if(e.target.classList.contains('x')) removeMine(L.id); else if(e.target.classList.contains('sh')) shareLook(L.id); else selectLook(L.id); };
       grid.appendChild(el); lookEls[L.id]=el;
     }
     if(g===MY){
-      const add=document.createElement('button'); add.className='look add'; add.title='Add a LUT (.cube file)';
-      add.innerHTML='<b>+</b><span>Add LUT</span>'; add.onclick=()=>$('lutIn').click(); grid.appendChild(add);
-      if(!LOOKS.some(l=>l.lut)){ const p=document.createElement('div'); p.className='lutHint';
-        p.textContent='Downloaded a LUT? Click + or drop the .cube file anywhere.'; root.appendChild(p); }
+      const add=document.createElement('button'); add.className='look add'; add.title='Import a .cube LUT or a .darkroom look file';
+      add.innerHTML='<b>+</b><span>Import LUT or look</span>'; add.onclick=()=>$('lutIn').click(); grid.appendChild(add);
+      if(!LOOKS.some(l=>l.group===MY)){ const p=document.createElement('div'); p.className='lutHint';
+        p.textContent='Make your own in the Edit tab with “Save as My Look”, or import a .cube LUT or .darkroom look file.'; root.appendChild(p); }
     }
   }
   syncLooks(); drawLookThumbs();
 }
 function syncLooks(){ const id=cur()?cur().s.look:DEFAULTS.look;
   for(const k in lookEls){ lookEls[k].setAttribute('aria-pressed',String(k===id&&!!cur())); }
-  $('lookDesc').textContent=cur()?LOOK[id].desc:'Add a photo to preview the looks'; }
+  $('lookDesc').textContent=cur()?(LOOK[id]?.desc||''):'Add a photo to preview the looks'; }
 function selectLook(id){
-  const p=cur(); if(!p||p.s.look===id) return; const fx=LOOK[id].fx||{};
-  snap(p); p.s.look=id; p.s.grain=fx.grain||0; p.s.glow=fx.glow||0; p.s.vignette=fx.vignette||0;
-  changed(p,{thumbs:false});
+  const p=cur(); if(!p||p.s.look===id) return; const L=LOOK[id];
+  snap(p); p.s.look=id;
+  if(L.preset) Object.assign(p.s,clone(L.preset));
+  else { const fx=L.fx||{}; p.s.grain=fx.grain||0; p.s.glow=fx.glow||0; p.s.vignette=fx.vignette||0; }
+  changed(p,{thumbs:!!L.preset});
+}
+function lookPreview(s,L){
+  if(L.preset) return {...s,...clone(L.preset),look:L.id,grain:0};
+  const fx=L.fx||{}; return {...s,look:L.id,strength:1,grain:0,glow:fx.glow||0,vignette:fx.vignette||0};
 }
 function drawLookThumbs(){
   const p=cur(); if(!p||!thumbR.tw) return;
-  const w=200, h=Math.round(200*thumbR.th/thumbR.tw);
-  for(const L of LOOKS){
-    const fx=L.fx||{};
-    thumbR.render({...p.s,look:L.id,strength:1,grain:0,glow:fx.glow||0,vignette:fx.vignette||0},w,h);
-    const c=lookEls[L.id].querySelector('canvas'); c.width=w; c.height=h; c.getContext('2d').drawImage(thumbR.c,0,0);
+  const [ow,oh]=outDims(p.s,thumbR.tw,thumbR.th), w=200, h=Math.max(1,Math.round(200*oh/ow));
+  for(const L of LOOKS){ const el=lookEls[L.id]; if(!el) continue;
+    thumbR.render(lookPreview(p.s,L),w,h);
+    const c=el.querySelector('canvas'); c.width=w; c.height=h; c.getContext('2d').drawImage(thumbR.c,0,0);
   }
 }
 let ltT; function lookThumbsSoon(){ clearTimeout(ltT); ltT=setTimeout(drawLookThumbs,200); }
@@ -726,23 +1203,23 @@ let ltT; function lookThumbsSoon(){ clearTimeout(ltT); ltT=setTimeout(drawLookTh
 // ================================================================= photos
 const SUPPORTED=/\.(jpe?g|png|webp|cr2)$/i;
 async function addFiles(files){
-  const all=[...files], cubes=all.filter(f=>/\.cube$/i.test(f.name)), ok=all.filter(f=>SUPPORTED.test(f.name));
-  if(cubes.length) await importLuts(cubes);
-  if(!ok.length){ if(all.length>cubes.length) toast('Those files are not supported. Use JPG, PNG or Canon CR2 photos, or .cube LUTs.'); return; }
+  const all=[...files], mine=all.filter(f=>/\.(cube|darkroom)$/i.test(f.name)), ok=all.filter(f=>SUPPORTED.test(f.name));
+  if(mine.length) await importMine(mine);
+  if(!ok.length){ if(all.length>mine.length) toast('Those files are not supported. Use JPG, PNG or Canon CR2 photos, .cube LUTs or .darkroom looks.'); return; }
   const have=new Set(S.photos.map(p=>p.key));
   const fresh=ok.filter(f=>!have.has(keyOf(f)));
   if(!fresh.length){ toast('Those photos are already open.'); return; }
-  const t=store.data.template||DEFAULTS;
-  const tmpl={...DEFAULTS,look:t.look,strength:t.strength,grain:t.grain,glow:t.glow,vignette:t.vignette};
+  const t=store.data.template||{};
+  const tmpl=defaultsFor(LOOK[t.look]?t.look:DEFAULTS.look); if(typeof t.strength==='number') tmpl.strength=t.strength;
   const start=S.photos.length;
   for(const file of fresh){
     const key=keyOf(file), saved=store.data.edits[key];
     const el=document.createElement('div'); el.className='item'; el.tabIndex=0; el.setAttribute('role','button');
     el.innerHTML=`<canvas width="240" height="160"></canvas><div class="nm"></div><div class="lk"></div><button class="rm" title="Remove from list" aria-label="Remove from list">×</button>`;
-    const p={id:Math.random().toString(36).slice(2),key,file,name:file.name,s:{...DEFAULTS,...(saved||tmpl)},el,
+    const p={id:Math.random().toString(36).slice(2),key,file,name:file.name,s:normalize(saved||clone(tmpl)),el,
       lk:el.querySelector('.lk'),hist:[],fut:[]};
-    el.querySelector('.nm').textContent=file.name; el.title=file.name; p.lk.textContent=LOOK[p.s.look]?.name||'';
     if(!LOOK[p.s.look]) p.s.look='none';
+    el.querySelector('.nm').textContent=file.name; el.title=file.name; p.lk.textContent=LOOK[p.s.look].name;
     el.onclick=e=>{ if(e.target.closest('.rm')) removePhoto(S.photos.indexOf(p)); else select(S.photos.indexOf(p)); };
     el.onkeydown=e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); select(S.photos.indexOf(p)); } };
     $('strip').appendChild(el); S.photos.push(p);
@@ -758,7 +1235,7 @@ function removePhoto(i){
   const p=S.photos[i]; if(!p) return;
   p.el.remove(); S.photos.splice(i,1);
   const b=cache.get(p.id); if(b){ b.close(); cache.delete(p.id); }
-  if(!S.photos.length){ S.cur=-1; main.tw=0; updateChrome(); syncSliders(); syncLooks(); syncUndo(); return; }
+  if(!S.photos.length){ S.cur=-1; S.bmp=null; main.tw=0; setCropMode(false); updateChrome(); syncAll(); return; }
   S.cur=-1; select(Math.min(i,S.photos.length-1)); updateChrome();
 }
 function updateChrome(){
@@ -778,44 +1255,55 @@ async function getPreview(p){
   for(const [k,b] of cache){ if(cache.size<=3) break; if(k===cur()?.id||k===p.id) continue; cache.delete(k); b.close(); }
   return bmp;
 }
+function computeHisto(bmp){
+  const c=document.createElement('canvas'); c.width=160; c.height=Math.max(1,Math.round(160*bmp.height/bmp.width));
+  const x=c.getContext('2d',{willReadFrequently:true}); x.drawImage(bmp,0,0,c.width,c.height);
+  const d=x.getImageData(0,0,c.width,c.height).data, h=new Array(64).fill(0);
+  for(let i=0;i<d.length;i+=4) h[Math.min(63,Math.floor((d[i]*.2126+d[i+1]*.7152+d[i+2]*.0722)/4))]++;
+  const m=Math.max(...h); return h.map(v=>Math.sqrt(v/m));
+}
 let selTok=0;
 async function select(i){
   if(i<0||i>=S.photos.length||i===S.cur) return;
   const tok=++selTok; S.cur=i; const p=S.photos[i];
   S.photos.forEach((q,j)=>{ q.el.classList.toggle('active',j===i); q.el.setAttribute('aria-current',j===i?'true':'false'); });
-  p.el.scrollIntoView({block:'nearest'});
-  syncSliders(); syncLooks(); syncUndo();
+  p.el.scrollIntoView({block:'nearest'}); endPick();
+  syncAll();
   const slow=setTimeout(()=>tok===selTok&&busy(true,'Opening '+p.name+'…'),150);
   try{
     const bmp=await getPreview(p); if(tok!==selTok) return;
-    main.setImage(bmp); thumbR.setImage(bmp); layout(); drawLookThumbs();
-    $('info').textContent=`${p.name}  ·  ${p.w}×${p.h}  ·  ${i+1} of ${S.photos.length}`;
+    S.bmp=bmp; histo=computeHisto(bmp);
+    main.setImage(bmp); thumbR.setImage(bmp); syncAll(); syncCropBox(); layout(); drawLookThumbs();
   }catch(e){ if(e.message!=='removed'){ markBroken(p,e); toast('Could not open '+p.name+': '+e.message,4000); } }
   finally{ clearTimeout(slow); if(tok===selTok) busy(false); }
 }
 
 // ================================================================= viewer
 function layout(){
-  if(!main.tw) return;
-  const r=$('viewer').getBoundingClientRect(), padX=28, padY=36;
-  const k=Math.min((r.width-padX*2)/main.tw,(r.height-padY*2)/main.th);
-  const cw=Math.max(1,Math.floor(main.tw*k)), ch=Math.max(1,Math.floor(main.th*k));
+  const p=cur(); if(!main.tw||!p) return;
+  const [ow,oh]=outDims(p.s,main.tw,main.th,S.cropMode);
+  const r=$('viewer').getBoundingClientRect(), padX=S.cropMode?40:28, padY=S.cropMode?44:36;
+  const k=Math.min((r.width-padX*2)/ow,(r.height-padY*2)/oh);
+  const cw=Math.max(1,Math.floor(ow*k)), ch=Math.max(1,Math.floor(oh*k));
   $('stage').style.width=cw+'px'; $('stage').style.height=ch+'px';
   const dpr=window.devicePixelRatio||1;
-  S.pw=Math.min(main.tw,Math.round(cw*dpr)); S.ph=Math.round(S.pw*main.th/main.tw);
+  S.pw=Math.max(1,Math.min(Math.round(ow),Math.round(cw*dpr))); S.ph=Math.max(1,Math.round(S.pw*oh/ow));
+  const [fw,fh]=outDims(p.s,p.w||main.tw,p.h||main.th);
+  $('info').textContent=`${p.name}  ·  ${Math.round(fw)}×${Math.round(fh)}  ·  ${S.cur+1} of ${S.photos.length}`;
   render();
 }
 let raf=0;
 function render(){ if(raf) return; raf=requestAnimationFrame(()=>{ raf=0; const p=cur(); if(!p||!main.tw) return;
-  main.render(p.s,S.pw,S.ph,S.hold?2:(S.split?S.splitPos:-1)); $('divider').style.left=(S.splitPos*100)+'%';
+  main.render(p.s,S.pw,S.ph,S.hold?2:(S.split&&!S.cropMode?S.splitPos:-1),{full:S.cropMode}); $('divider').style.left=(S.splitPos*100)+'%';
   $('stage').classList.toggle('hold',S.hold); }); }
 new ResizeObserver(layout).observe($('viewer'));
 
-function setSplitMode(on){ S.split=on; $('splitChk').checked=on; $('stage').classList.toggle('split',on); render(); }
+function setSplitMode(on){ if(on&&S.cropMode) on=false; S.split=on; $('splitChk').checked=on; $('stage').classList.toggle('split',on); render(); }
 $('splitChk').onchange=e=>setSplitMode(e.target.checked);
 let dragging=false;
 const setSplit=e=>{ const r=$('stage').getBoundingClientRect(); S.splitPos=Math.min(1,Math.max(0,(e.clientX-r.left)/r.width)); render(); };
-$('stage').addEventListener('pointerdown',e=>{ if(!S.split) return; dragging=true; $('stage').setPointerCapture(e.pointerId); setSplit(e); });
+$('stage').addEventListener('pointerdown',e=>{ if(S.pick){ e.preventDefault(); pickAt(e); return; }
+  if(!S.split) return; dragging=true; $('stage').setPointerCapture(e.pointerId); setSplit(e); });
 $('stage').addEventListener('pointermove',e=>{ if(dragging) setSplit(e); });
 $('stage').addEventListener('pointerup',()=>dragging=false);
 
@@ -828,7 +1316,10 @@ addEventListener('keydown',e=>{
   if(mod&&k==='o'){ e.preventDefault(); openPicker(); return; }
   if(mod&&k==='e'){ e.preventDefault(); openExport(); return; }
   if(mod||e.altKey) return;
+  if(e.key==='Escape'){ if(S.pick) endPick(); else if(S.cropMode) setCropMode(false); return; }
+  if(e.key==='Enter'&&S.cropMode&&e.target.tagName!=='BUTTON'){ setCropMode(false); return; }
   if(k==='b'){ if(!S.hold){ S.hold=true; render(); } }
+  else if(k==='c') setCropMode(!S.cropMode);
   else if(e.key==='\\') setSplitMode(!S.split);
   else if(e.key==='?') $('helpDlg').showModal();
   else if(onRange) return;
@@ -837,7 +1328,7 @@ addEventListener('keydown',e=>{
   else if(e.key==='ArrowDown'||e.key==='ArrowUp'){
     const p=cur(); if(!p) return; e.preventDefault();
     const i=LOOKS.findIndex(l=>l.id===p.s.look), n=LOOKS.length;
-    const id=LOOKS[(i+(e.key==='ArrowDown'?1:-1)+n)%n].id; selectLook(id); lookEls[id].scrollIntoView({block:'nearest'});
+    const id=LOOKS[(i+(e.key==='ArrowDown'?1:-1)+n)%n].id; selectLook(id); lookEls[id]?.scrollIntoView({block:'nearest'});
   }
   else if((e.key==='Backspace'||e.key==='Delete')&&cur()){ e.preventDefault(); removePhoto(S.cur); }
 });
@@ -853,25 +1344,26 @@ addEventListener('dragenter',e=>{ if(e.dataTransfer?.types?.includes('Files')){ 
 addEventListener('dragleave',()=>{ if(--dragDepth<=0){ dragDepth=0; $('viewer').classList.remove('drag'); } });
 addEventListener('dragover',e=>e.preventDefault());
 addEventListener('drop',e=>{ e.preventDefault(); dragDepth=0; $('viewer').classList.remove('drag'); addFiles(e.dataTransfer.files); });
-// Used by the Mac app for ⌘O, the Dock and "Open With": it serves the chosen files at these URLs.
+// Used by the Mac and Windows apps (⌘O / Ctrl+O, the Dock, "Open with"): they serve the chosen files at these URLs.
 window.addRemote=async list=>{
-  busy(true,'Reading photos…');
+  busy(true,'Reading files…');
   try{ const files=await Promise.all(list.map(async ({url,name,modified})=>new File([await (await fetch(url)).blob()],name,{lastModified:modified})));
     await addFiles(files); }
   catch(e){ toast('Could not read those files: '+e.message,4000); }
   finally{ busy(false); }
 };
 
-$('resetBtn').onclick=()=>{ const p=cur(); if(!p) return; const L=LOOK[p.s.look], fx=L.fx||{};
-  const next={...DEFAULTS,look:p.s.look,grain:fx.grain||0,glow:fx.glow||0,vignette:fx.vignette||0};
-  if(JSON.stringify(next)===JSON.stringify(p.s)) return; snap(p); p.s=next; changed(p); };
+$('resetBtn').onclick=()=>{ const p=cur(); if(!p) return; const next=defaultsFor(p.s.look);
+  for(const k of SECTIONS.crop) next[k]=clone(p.s[k]); next.strength=p.s.strength;
+  if(same(next,p.s)) return; snap(p); p.s=next; changed(p); toast('Edits reset (crop kept)'); };
 $('applyAll').onclick=()=>{ const p=cur(); if(!p) return;
-  for(const q of S.photos){ if(q===p) continue; q.hist.push({...q.s}); q.fut.length=0; q.s={...p.s}; changed(q); }
-  toast(`Applied “${LOOK[p.s.look].name}” to all ${S.photos.length} photos`); };
+  for(const q of S.photos){ if(q===p) continue; q.hist.push(clone(q.s)); q.fut.length=0;
+    const geo={}; for(const k of SECTIONS.crop) geo[k]=q.s[k]; q.s={...clone(p.s),...geo}; changed(q); }
+  toast(`Applied to all ${S.photos.length} photos (each keeps its own crop)`); };
 $('undoBtn').onclick=undo; $('redoBtn').onclick=redo;
 $('helpBtn').onclick=()=>$('helpDlg').showModal();
 
-// ================================================================= LUTs
+// ================================================================= LUTs and My Looks
 function ask(title,body,ok){
   return new Promise(res=>{ const d=$('askDlg'); $('askTitle').textContent=title; $('askBody').textContent=body; $('askOk').textContent=ok;
     d.returnValue=''; d.showModal(); d.addEventListener('close',()=>res(d.returnValue==='yes'),{once:true}); });
@@ -900,65 +1392,135 @@ function parseCube(text){
   let o=0; for(let b=0;b<N;b++) for(let g=0;g<N;g++) for(let r=0;r<N;r++){ d[o++]=at(0,r/(N-1)); d[o++]=at(1,g/(N-1)); d[o++]=at(2,b/(N-1)); }
   return {size:N,data:d,dmin,dmax};
 }
-const lutName=f=>f.replace(/\.cube$/i,'').replace(/[_]+/g,' ').replace(/\s+/g,' ').trim().slice(0,40)||'My LUT';
+const lutName=f=>f.replace(/\.(cube|darkroom)$/i,'').replace(/[_]+/g,' ').replace(/\s+/g,' ').trim().slice(0,40)||'My look';
+const newId=pre=>pre+'-'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+const uniqueName=n=>{ let s=n, i=2; while(LOOKS.some(l=>l.group===MY&&l.name===s)) s=`${n} ${i++}`; return s; };
 function addLutLook(id,name,text){
   const L={id,name,group:MY,desc:`Your LUT: ${name}`,p:{},lut:parseCube(text)};
   LOOKS.push(L); LOOK[id]=L; return L;
 }
-async function importLuts(files){
+// A saved look = a base (built-in look or a LUT, stored inside it) + the edits in PRESET_KEYS.
+function cleanPreset(src){ const d=clone(DEFAULTS), out={};
+  for(const k of PRESET_KEYS){ const v=src?.[k], dv=d[k];
+    if(typeof dv==='number') out[k]=Number.isFinite(+v)?Math.max(-2,Math.min(2,+v)):dv;
+    else if(Array.isArray(dv)) out[k]=Array.isArray(v)&&v.length===dv.length&&v.every(n=>Number.isFinite(+n))?v.map(Number):dv;
+    else if(k==='curves') out[k]=Object.fromEntries(['rgb','r','g','b'].map(c=>[c,Array.isArray(v?.[c])&&v[c].length>=2&&v[c].length<=16&&v[c].every(q=>Array.isArray(q)&&q.length===2&&q.every(n=>Number.isFinite(+n)))
+      ?v[c].map(q=>[Math.min(1,Math.max(0,+q[0])),Math.min(1,Math.max(0,+q[1]))]).sort((a,b)=>a[0]-b[0]):dv[c]]));
+    else if(k==='wheels') out[k]=Object.fromEntries(['sh','mid','hi'].map(w=>[w,Array.isArray(v?.[w])&&v[w].length===3&&v[w].every(n=>Number.isFinite(+n))?v[w].map(n=>Math.max(-1,Math.min(1,+n))):dv[w]]));
+  }
+  return out;
+}
+function addMyLook(x){
+  const base=LOOK[x.base], lut=x.lutText?parseCube(x.lutText):null;
+  if(!lut&&(!base||base.preset||base.lut)) throw new Error('its base look is missing');
+  const L={id:x.id,name:x.name,group:MY,desc:`Your look, based on ${x.baseName||base?.name||'a LUT'}`,p:lut?{}:base.p,lut,preset:cleanPreset(x.preset),
+    base:x.base,baseName:x.baseName||base?.name,lutText:x.lutText||null};
+  LOOKS.push(L); LOOK[L.id]=L; return L;
+}
+const myRecord=L=>({type:'look',id:L.id,name:L.name,base:L.base,baseName:L.baseName,preset:L.preset,lutText:L.lutText});
+async function importMine(files){
   const added=[], bad=[];
   for(const f of files){
-    const name=lutName(f.name);
-    if(LOOKS.some(l=>l.lut&&l.name===name)){ bad.push(`“${name}” is already added`); continue; }
-    try{ const text=await f.text(), id='lut-'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
-      addLutLook(id,name,text); store.luts.push({id,name,text}); added.push(LOOK[id]); }
-    catch(e){ bad.push(`“${name}”: ${e.message}`); }
+    try{
+      const text=await f.text();
+      if(/\.cube$/i.test(f.name)){
+        const name=lutName(f.name); if(LOOKS.some(l=>l.lut&&!l.preset&&l.name===name)){ bad.push(`“${name}” is already added`); continue; }
+        const id=newId('lut'); addLutLook(id,name,text); store.luts.push({id,name,text}); added.push(LOOK[id]);
+      } else {
+        let j; try{ j=JSON.parse(text); }catch{ throw new Error('this is not a Darkroom look file'); }
+        if(!j||j.darkroom!==1||j.kind!=='look') throw new Error('this is not a Darkroom look file');
+        const rec={id:newId('my'),name:uniqueName(String(j.name||lutName(f.name)).slice(0,40)),base:String(j.base||''),baseName:j.baseName,
+          preset:j.settings,lutText:typeof j.lut==='string'?j.lut:null};
+        const L=addMyLook(rec); store.luts.push(myRecord(L)); added.push(L);
+      }
+    }catch(e){ bad.push(`“${f.name}”: ${e.message}`); }
   }
-  if(added.length){ store.saveLuts(); buildLooks(); const L=added[added.length-1];
+  if(added.length){ store.saveLuts(); buildLooks(); const L=added[added.length-1]; showTab('tabLooks');
     if(cur()) selectLook(L.id); lookEls[L.id]?.scrollIntoView({block:'nearest',behavior:'smooth'}); }
-  if(bad.length) toast((added.length?`Added ${added.length} LUT${added.length>1?'s':''}. `:'')+'Skipped '+bad.join('; '),6000);
-  else if(added.length) toast(added.length>1?`Added ${added.length} LUTs to “My LUTs”`:`Added “${added[0].name}” to My LUTs`);
+  if(bad.length) toast((added.length?`Added ${added.length}. `:'')+'Skipped '+bad.join('; '),6000);
+  else if(added.length) toast(added.length>1?`Added ${added.length} to My Looks`:`Added “${added[0].name}” to My Looks`);
 }
-async function removeLut(id){
+async function removeMine(id){
   const L=LOOK[id]; if(!L) return;
-  if(!await ask('Remove this LUT?',`“${L.name}” will be removed from Darkroom. The .cube file on your computer is not deleted.`,'Remove')) return;
+  if(!await ask('Remove from My Looks?',`“${L.name}” will be removed from Darkroom.`+(L.preset?'':' The .cube file on your computer is not deleted.'),'Remove')) return;
   LOOKS.splice(LOOKS.indexOf(L),1); delete LOOK[id];
   store.luts=store.luts.filter(x=>x.id!==id); store.saveLuts();
   for(const r of [main,thumbR,exportR]) r.dropLut(id);
-  for(const p of S.photos){ if(p.s.look===id){ p.s.look='none'; changed(p); } p.hist=p.hist.filter(s=>s.look!==id); p.fut=p.fut.filter(s=>s.look!==id); }
+  const fallback=L.preset&&LOOK[L.base]&&!L.lutText?L.base:'none';
+  for(const p of S.photos){ if(p.s.look===id){ p.s.look=fallback; changed(p); }
+    for(const h of [...p.hist,...p.fut]) if(h.look===id) h.look=fallback; }
   buildLooks(); syncUndo(); render();
 }
-$('lutIn').onchange=e=>{ importLuts([...e.target.files]); e.target.value=''; };
+$('lutIn').onchange=e=>{ importMine([...e.target.files]); e.target.value=''; };
 
-// Bakes a look into a 33-point .cube LUT by rendering an identity colour grid through the shader.
-function bakeLut(L,N=33){
+// Save the current photo's look + edits as a reusable "My Look"
+function askName(def,updateLabel){
+  return new Promise(res=>{ const d=$('nameDlg'); $('nameIn').value=def; $('nameUpd').hidden=!updateLabel; $('nameUpd').textContent=updateLabel||'';
+    d.returnValue=''; d.showModal(); $('nameIn').select();
+    const onKey=e=>{ if(e.key==='Enter'){ e.preventDefault(); d.close('new'); } };
+    $('nameIn').addEventListener('keydown',onKey);
+    d.addEventListener('close',()=>{ $('nameIn').removeEventListener('keydown',onKey); res({action:d.returnValue,name:$('nameIn').value.trim()}); },{once:true}); });
+}
+$('saveLookBtn').onclick=async()=>{
+  const p=cur(); if(!p) return; const L=LOOK[p.s.look];
+  const {action,name}=await askName(L.preset?L.name:uniqueName('My '+L.name),L.preset?`Update “${L.name}”`:null);
+  if(action!=='new'&&action!=='update') return;
+  const preset=cleanPreset(p.s);
+  if(action==='update'){ L.preset=preset; const i=store.luts.findIndex(x=>x.id===L.id); if(i>=0) store.luts[i]=myRecord(L);
+    store.saveLuts(); drawLookThumbs(); toast(`Updated “${L.name}”`); return; }
+  const rec={id:newId('my'),name:uniqueName(name||'My look'),preset,
+    base:L.preset?L.base:L.id, baseName:L.preset?L.baseName:L.name,
+    lutText:L.preset?L.lutText:(L.lut?store.luts.find(x=>x.id===L.id)?.text||null:null)};
+  const N=addMyLook(rec); store.luts.push(myRecord(N)); store.saveLuts();
+  snap(p); p.s.look=N.id; buildLooks(); changed(p); showTab('tabLooks'); lookEls[N.id]?.scrollIntoView({block:'nearest',behavior:'smooth'});
+  toast(`Saved “${N.name}” to My Looks`);
+};
+async function shareLook(id){
+  const L=LOOK[id]; if(!L?.preset) return;
+  const json=JSON.stringify({darkroom:1,kind:'look',name:L.name,base:L.base,baseName:L.baseName,settings:L.preset,lut:L.lutText||undefined},null,2);
+  const sink=await makeSink(1,'Choose where to save the look file'); if(!sink) return;
+  await sink.write(`${L.name.replace(/[\\/:*?"<>|]+/g,'')}.darkroom`,new Blob([json],{type:'application/json'}));
+  toast(`Saved “${L.name}.darkroom”. Share it with anyone using Darkroom`,4000); sink.done();
+}
+
+// Bakes colour settings into a 33-point .cube LUT by rendering an identity colour grid through the shader.
+// Spatial effects (crop, clarity, sharpen, grain, glow, vignette) can't live in a LUT, so they're switched off.
+function bakeLut(s,title,desc,N=33){
   const w=N*N, h=N, px=new Uint8Array(w*h*4), out=new Uint8Array(w*h*4), gl=exportR.gl;
   for(let b=0;b<N;b++) for(let g=0;g<N;g++) for(let r=0;r<N;r++){ const i=(g*w+r+N*b)*4;
     px[i]=Math.round(r/(N-1)*255); px[i+1]=Math.round(g/(N-1)*255); px[i+2]=Math.round(b/(N-1)*255); px[i+3]=255; }
   exportR.setPixels(w,h,px);
-  exportR.render({...DEFAULTS,look:L.id,strength:1,grain:0,glow:0,vignette:0},w,h);
+  const flat={...normalize(s),rot:0,flipH:false,flipV:false,angle:0,crop:[0,0,1,1],exposure:0,clarity:0,sharpen:0,grain:0,glow:0,vignette:0};
+  exportR.render(flat,w,h);
   gl.readPixels(0,0,w,h,gl.RGBA,gl.UNSIGNED_BYTE,out);
-  const lines=[`# Created with Darkroom: ${L.desc}`,`TITLE "Darkroom ${L.name}"`,`LUT_3D_SIZE ${N}`,'DOMAIN_MIN 0.0 0.0 0.0','DOMAIN_MAX 1.0 1.0 1.0'];
+  const lines=[`# Created with Darkroom: ${desc}`,`TITLE "${title.replace(/"/g,'')}"`,`LUT_3D_SIZE ${N}`,'DOMAIN_MIN 0.0 0.0 0.0','DOMAIN_MAX 1.0 1.0 1.0'];
   for(let b=0;b<N;b++) for(let g=0;g<N;g++) for(let r=0;r<N;r++){ const i=((h-1-g)*w+r+N*b)*4;
     lines.push(`${(out[i]/255).toFixed(6)} ${(out[i+1]/255).toFixed(6)} ${(out[i+2]/255).toFixed(6)}`); }
   return lines.join('\n')+'\n';
 }
 async function saveLooksAsLuts(){
-  const list=LOOKS.filter(l=>l.id!=='none'&&!l.lut);
+  const list=LOOKS.filter(l=>l.id!=='none'&&!l.lut&&!l.preset);
   const sink=await makeSink(list.length,'Choose where to save the LUT files'); if(!sink) return;
   busy(true,'Making LUT files…');
   try{
-    for(const L of list) await sink.write(`Darkroom ${L.name}.cube`,new Blob([bakeLut(L)],{type:'text/plain'}));
+    for(const L of list) await sink.write(`Darkroom ${L.name}.cube`,new Blob([bakeLut({...DEFAULTS,look:L.id},`Darkroom ${L.name}`,L.desc)],{type:'text/plain'}));
     toast(`Saved ${list.length} LUT files to “${sink.label}”`,3500); sink.done();
   }catch(e){ console.error(e); toast('Could not save the LUTs: '+e.message,5000); }
   finally{ busy(false); }
 }
 $('saveLutsBtn').onclick=saveLooksAsLuts;
+$('cubeBtn').onclick=async()=>{
+  const p=cur(); if(!p) return; const L=LOOK[p.s.look], name=L.preset?L.name:`${L.name} (edited)`;
+  const sink=await makeSink(1,'Choose where to save the LUT file'); if(!sink) return;
+  await sink.write(`Darkroom ${name.replace(/[\\/:*?"<>|]+/g,'')}.cube`,new Blob([bakeLut(p.s,`Darkroom ${name}`,'your edit')],{type:'text/plain'}));
+  toast('Saved the colour of this edit as a .cube LUT (crop, clarity, sharpen, grain, glow and vignette aren’t part of LUTs)',5000); sink.done();
+};
 
 // ================================================================= export
 const toB64=blob=>new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.slice(r.result.indexOf(',')+1));r.onerror=rej;r.readAsDataURL(blob);});
 function openExport(){
   if(!S.photos.length) return;
+  if(S.cropMode) setCropMode(false);
   const prefs=store.data.exportPrefs||{size:'0',q:'0.95',exif:true};
   $('exSize').value=prefs.size; $('exQ').value=prefs.q; $('exExif').checked=prefs.exif;
   const n=S.photos.length, all=$('exportDlg').querySelector('input[value=all]');
@@ -992,16 +1554,19 @@ async function makeSink(count,message){
 async function exportPhotos(list,prefs){
   if(!list.length) return;
   const sink=await makeSink(list.length); if(!sink) return;
-  const maxSide=Math.min(+prefs.size||Infinity,exportR.max);
+  const maxSide=+prefs.size||Infinity;
   let done=0; const failed=[];
   for(const p of list){
     busy(true,`Exporting ${done+failed.length+1} of ${list.length}…`);
     try{
-      const bmp=await fit(await decodeFile(p.file),maxSide), w=bmp.width, h=bmp.height;
-      exportR.setImage(bmp); exportR.render(p.s,w,h); bmp.close();
+      const bmp=await fit(await decodeFile(p.file),exportR.max);
+      exportR.setImage(bmp); bmp.close();
+      const [ow,oh]=outDims(p.s,exportR.tw,exportR.th), k=Math.min(1,maxSide/Math.max(ow,oh));
+      const w=Math.max(1,Math.round(ow*k)), h=Math.max(1,Math.round(oh*k));
+      exportR.render(p.s,w,h);
       let blob=await new Promise(r=>exportR.c.toBlob(r,'image/jpeg',+prefs.q));
       if(prefs.exif&&!isCR2(p.file)){ const seg=exifSegment(await p.file.arrayBuffer(),w,h); if(seg) blob=await withExif(blob,seg); }
-      const name=p.name.replace(/\.[^.]+$/,'')+'_'+LOOK[p.s.look].name.replace(/\s+/g,'')+'.jpg';
+      const name=p.name.replace(/\.[^.]+$/,'')+'_'+LOOK[p.s.look].name.replace(/[\s\\/:*?"<>|]+/g,'')+'.jpg';
       await sink.write(name,blob); done++;
     }catch(e){ console.error(e); failed.push(p.name); }
   }
@@ -1019,8 +1584,9 @@ if(!/Mac|iPhone|iPad/.test(navigator.platform||navigator.userAgent)){
   document.querySelectorAll('.keys>span:first-child').forEach(el=>{ el.innerHTML=el.innerHTML.replace(/<kbd>⌘<\/kbd>\s*/g,'<kbd>Ctrl</kbd> ').replace(/<kbd>⇧<\/kbd>/g,'<kbd>Shift</kbd> ').replace(/<kbd>⌫<\/kbd>/g,'<kbd>Delete</kbd>'); });
 }
 (async()=>{ await store.load(); await store.loadLuts();
-  for(const x of store.luts){ try{ addLutLook(x.id,x.name,x.text); }catch(e){ console.warn('skipped LUT',x.name,e); } }
-  buildLooks(); updateChrome(); syncSliders(); syncLooks(); syncUndo(); nativeApp?.postMessage({cmd:'ready'}); })();
+  for(const x of store.luts.filter(x=>x.type!=='look')){ try{ addLutLook(x.id,x.name,x.text); }catch(e){ console.warn('skipped LUT',x.name,e); } }
+  for(const x of store.luts.filter(x=>x.type==='look')){ try{ addMyLook(x); }catch(e){ console.warn('skipped look',x.name,e); } }
+  buildLooks(); updateChrome(); syncAll(); nativeApp?.postMessage({cmd:'ready'}); })();
 window.addFiles=addFiles;
 </script>
 </body>

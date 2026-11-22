@@ -10,7 +10,7 @@ const { pathToFileURL } = require('url');
 
 const SCHEME = 'darkroom';
 const APP_DIR = path.join(__dirname, 'app');
-const PHOTO_EXT = ['jpg', 'jpeg', 'png', 'webp', 'cr2', 'cube'];
+const PHOTO_EXT = ['jpg', 'jpeg', 'png', 'webp', 'cr2', 'cube', 'darkroom'];
 const REPO = 'https://github.com/hmimiaymane-scarface/darkroom-film-looks';
 
 protocol.registerSchemesAsPrivileged([

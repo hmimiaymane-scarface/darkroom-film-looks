@@ -195,10 +195,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKUIDelegate, WKNaviga
         let p = NSOpenPanel()
         p.canChooseDirectories = false
         p.canChooseFiles = true
-        p.message = "Choose photos (JPG, PNG, Canon CR2) or LUTs (.cube)"
+        p.message = "Choose photos (JPG, PNG, Canon CR2), LUTs (.cube) or looks (.darkroom)"
         var types: [UTType] = [.jpeg, .png, .webP]
         if let cr2 = UTType("com.canon.cr2-raw-image") { types.append(cr2) }
         if let cube = UTType(filenameExtension: "cube") { types.append(cube) }
+        if let look = UTType(filenameExtension: "darkroom") { types.append(look) }
         p.allowedContentTypes = types
         return p
     }

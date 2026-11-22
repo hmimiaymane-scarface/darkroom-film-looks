@@ -72,5 +72,5 @@ run(`npx electron-builder --win nsis --x64 --prepackaged dist/win-unpacked ${com
   `--config.nsis.oneClick=true --config.nsis.perMachine=false --config.nsis.runAfterFinish=true ` +
   `--config.nsis.createDesktopShortcut=always --config.nsis.createStartMenuShortcut=true ` +
   `--config.nsis.shortcutName=Darkroom --config.nsis.installerIcon=build-res/icon.ico ` +
-  `--config.nsis.uninstallerIcon=build-res/icon.ico '--config.nsis.artifactName=Darkroom-Setup-\${version}.exe'`);
+  `--config.nsis.uninstallerIcon=build-res/icon.ico '--config.nsis.artifactName=Darkroom-Windows-Setup.exe'`);
 console.log('✓ Built', fs.readdirSync(path.join(here, 'dist')).filter((f) => f.endsWith('.exe')).join(', '));

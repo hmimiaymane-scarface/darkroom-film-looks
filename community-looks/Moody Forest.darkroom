@@ -1,0 +1,21 @@
+{
+  "darkroom": 1,
+  "kind": "look",
+  "name": "Moody Forest",
+  "author": "hmimiaymane-scarface",
+  "base": "chrome",
+  "baseName": "Chrome Classic",
+  "settings": {
+    "strength": 1,
+    "contrast": 0.1,
+    "highlights": -0.3,
+    "blacks": -0.2,
+    "mixH": [0, 0, -0.2, 0.3, 0, 0, 0, 0],
+    "mixS": [0, -0.2, -0.3, -0.4, -0.2, 0, 0, 0],
+    "mixL": [0, 0, -0.3, -0.4, 0, 0, 0, 0],
+    "wheels": { "sh": [-0.55, 0.3, -0.1], "mid": [0, 0, 0], "hi": [0.3, 0.15, 0] },
+    "clarity": 0.2,
+    "grain": 0.2,
+    "vignette": 0.3
+  }
+}
