@@ -14,7 +14,12 @@ Everything runs on your computer, on the GPU (WebGL2). No uploads, no account, n
    Click **Done**, then go to **System Settings → Privacy & Security**, scroll down and click **Open Anyway**.
    You only need to do this once.
 
-**Windows / Linux / any computer:** download [`darkroom.html`](https://github.com/hmimiaymane-scarface/darkroom-film-looks/releases/latest/download/darkroom.html)
+**Windows:** [**Download Darkroom for Windows**](https://github.com/hmimiaymane-scarface/darkroom-film-looks/releases/latest/download/Darkroom-Setup-1.0.0.exe) (Windows 10 and 11)
+
+1. Run **Darkroom-Setup-1.0.0.exe**. It installs in a few seconds (no admin rights needed) and adds Darkroom to your Start menu and desktop.
+2. If Windows shows **"Windows protected your PC"** (it does this for new apps that aren't commercially code-signed), click **More info → Run anyway**. Only needed once.
+
+**Linux / any computer:** download [`darkroom.html`](https://github.com/hmimiaymane-scarface/darkroom-film-looks/releases/latest/download/darkroom.html)
 and open it in Chrome or Edge. It's the same editor in a single file.
 
 ## Looks (38 built in)
@@ -60,6 +65,14 @@ mac/build.sh
 Then drag `build/Darkroom.app` into **Applications**. You can open photos with ⌘O, by dropping
 them on the window or Dock icon, or with right-click → Open With → Darkroom.
 
+**Windows app:** build the installer from macOS, Linux or Windows (needs Node.js):
+
+```bash
+cd windows && npm install && npm run build
+```
+
+The installer lands in `windows/dist/`. Use `npm start` to run the app without installing it.
+
 **Any browser:** just open `darkroom.html` in Chrome, Edge or Safari. It's a single self-contained file.
 
 ## Tip for Canon shooters
@@ -75,6 +88,8 @@ mac/main.swift     native macOS shell (WKWebView, menus, file open/save)
 mac/Info.plist     app bundle metadata
 mac/icon.swift     draws the app icon
 mac/build.sh       builds build/Darkroom.app (universal binary)
+windows/main.js    Windows app (Electron): window, menus, file open/save
+windows/build.mjs  builds the Windows installer (no Wine needed)
 ```
 
 ### Adding your own look

@@ -1012,6 +1012,12 @@ async function exportPhotos(list,prefs){
 }
 
 // ================================================================= start
+// Show Windows/Linux key names instead of Mac symbols.
+if(!/Mac|iPhone|iPad/.test(navigator.platform||navigator.userAgent)){
+  const sw=t=>t.replace(/⌘\s*/g,'Ctrl+').replace(/⇧\s*/g,'Shift+').replace(/Ctrl\+\+/g,'Ctrl+').replace(/⌫/g,'Delete');
+  document.querySelectorAll('[title]').forEach(el=>el.title=sw(el.title));
+  document.querySelectorAll('.keys>span:first-child').forEach(el=>{ el.innerHTML=el.innerHTML.replace(/<kbd>⌘<\/kbd>\s*/g,'<kbd>Ctrl</kbd> ').replace(/<kbd>⇧<\/kbd>/g,'<kbd>Shift</kbd> ').replace(/<kbd>⌫<\/kbd>/g,'<kbd>Delete</kbd>'); });
+}
 (async()=>{ await store.load(); await store.loadLuts();
   for(const x of store.luts){ try{ addLutLook(x.id,x.name,x.text); }catch(e){ console.warn('skipped LUT',x.name,e); } }
   buildLooks(); updateChrome(); syncSliders(); syncLooks(); syncUndo(); nativeApp?.postMessage({cmd:'ready'}); })();

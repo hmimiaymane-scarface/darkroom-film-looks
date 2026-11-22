@@ -1,0 +1,20 @@
+{
+  "name": "darkroom",
+  "productName": "Darkroom",
+  "version": "1.0.0",
+  "description": "Film-look photo editor with 38 looks and LUT import/export",
+  "author": "hmimiaymane-scarface",
+  "license": "MIT",
+  "homepage": "https://github.com/hmimiaymane-scarface/darkroom-film-looks",
+  "main": "main.js",
+  "private": true,
+  "scripts": {
+    "start": "node build.mjs --prepare && electron .",
+    "build": "node build.mjs"
+  },
+  "devDependencies": {
+    "electron": "45.4.1",
+    "electron-builder": "26.18.0",
+    "resedit": "3.1.1"
+  }
+}
