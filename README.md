@@ -97,7 +97,7 @@ The installer lands in `windows/dist/`. Use `npm start` to run the app without i
 
 ## Shooting tip
 
-Set your camera's picture profile to **Neutral** (on Canon: Picture Style → Neutral) (contrast and saturation turned down a notch).
+Set your camera's picture profile to **Neutral**, with contrast and saturation turned down a notch (on Canon: Picture Style → Neutral).
 Flat files give the looks more room to work.
 
 ## Project layout
