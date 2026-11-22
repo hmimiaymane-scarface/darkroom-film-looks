@@ -1,7 +1,7 @@
 # Darkroom
 
 A small, private photo editor with film looks (Fujifilm-, Kodak- and Hollywood-inspired) and the editing tools to make them your own.
-I built it for my Canon 4000D, but it works with any JPG, PNG or Canon CR2.
+Works with JPG, PNG and Canon CR2 files from any camera.
 
 Everything runs on your computer, on the GPU (WebGL2). No uploads, no account, no tracking.
 
@@ -95,9 +95,9 @@ The installer lands in `windows/dist/`. Use `npm start` to run the app without i
 
 **Any browser:** just open `darkroom.html` in Chrome, Edge or Safari. It's a single self-contained file.
 
-## Tip for Canon shooters
+## Shooting tip
 
-Set your camera's Picture Style to **Neutral** (contrast and saturation turned down a notch).
+Set your camera's picture profile to **Neutral** (on Canon: Picture Style → Neutral) (contrast and saturation turned down a notch).
 Flat files give the looks more room to work.
 
 ## Project layout
